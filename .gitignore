@@ -1,8 +1,9 @@
 node_modules
-.next
-out
+dist
+.netlify
 .env*
 !.env.example
 .vercel
+.next
 *.log
 .DS_Store
