@@ -1,14 +1,14 @@
 # Java AI
 
-A ChatGPT-inspired AI chatbot powered by Google's Gemini API.
+Java AI — Google Gemini bilan ishlaydigan AI yordamchi. Frontend Vite + React + TypeScript asosida, server API esa Netlify Functions orqali ishlaydi.
 
-## Local development
+## Lokal ishga tushirish
 
-1. Install Node.js 20 or newer.
-2. Run `npm install`.
-3. Create `.env.local` and set `GEMINI_API_KEY`.
-4. Run `npm run dev`.
+1. Node.js 20+ o'rnating.
+2. `npm install` bajaring.
+3. `.env` fayl yarating va `GEMINI_API_KEY=...` qo'shing.
+4. `npm run netlify:dev` bilan frontend va server funksiyani birga ishga tushiring.
 
-Get an API key at https://aistudio.google.com/api-keys.
+Build: `npm run build`
 
-Never commit `.env.local` or expose your Gemini API key in client-side code.
+Gemini API kalitini frontend kodiga yoki Git repository'ga joylamang. Netlify'da `GEMINI_API_KEY` ni Environment Variables bo'limida saqlang.
