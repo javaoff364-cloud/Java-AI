@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Bot, Menu, MessageSquare, Plus, Sparkles, Sun, Moon, Trash2, PanelLeftClose } from "lucide-react";
+import { ArrowUp, Bot, Menu, MessageSquare, Plus, Sparkles, Sun, Moon, Trash2, X } from "lucide-react";
 
 type Message = { role: "user" | "assistant"; content: string };
 type Chat = { id: string; title: string; messages: Message[] };
@@ -54,19 +54,20 @@ export default function Home() {
 
   return <main className={dark?"app dark":"app light"}>
     <aside className={sidebar?"sidebar":"sidebar closed"}>
-      <div className="brand"><span className="brand-icon"><Sparkles size={18}/></span>Java<span className="ai">AI</span></div>
+      <div className="brand"><img className="brand-logo" src="/java-mark.svg" alt="Java AI logo"/><span>Java<span className="ai">AI</span></span><button className="sidebar-close" onClick={()=>setSidebar(false)} aria-label="Yon panelni yopish"><X size={18}/></button></div>
       <button className="new-chat" onClick={newChat}><Plus size={17}/> Yangi chat</button>
       <div className="label">SUHBATLAR</div>
       <div className="chat-list">{chats.map(c=><div className={"chat-item "+(c.id===activeId?"selected":"")} key={c.id}>
         <button className="chat-name" onClick={()=>setActiveId(c.id)}><MessageSquare size={15}/><span>{c.title}</span></button>
         <button className="delete" onClick={()=>deleteChat(c.id)} aria-label="Chatni o'chirish"><Trash2 size={14}/></button>
       </div>)}</div>
-      <div className="profile"><div className="avatar">J</div><div><b>Java AI</b><small>Shaxsiy AI yordamchi</small></div><button onClick={()=>setDark(!dark)} aria-label="Mavzuni almashtirish">{dark?<Sun size={17}/>:<Moon size={17}/>}</button></div>
+      <div className="profile"><div className="avatar"><img src="/java-mark.svg" alt="Java AI"/></div><div><b>Java AI</b><small>Shaxsiy AI yordamchi</small></div><button onClick={()=>setDark(!dark)} aria-label="Mavzuni almashtirish">{dark?<Sun size={17}/>:<Moon size={17}/>}</button></div>
     </aside>
+    {sidebar&&<button className="sidebar-backdrop" onClick={()=>setSidebar(false)} aria-label="Yon panelni yopish"/>}
     <section className="main">
       <header className="topbar"><button className="icon" onClick={()=>setSidebar(!sidebar)} aria-label="Sidebar"><Menu size={19}/></button><div className="model"><i/> Java <span>· Gemini</span></div><span className="beta">BETA</span></header>
       <div className="conversation">
-        {!active?.messages.length?<div className="welcome"><div className="hero-icon"><Bot size={31}/></div><div className="eyebrow">SIZNING AI YORDAMCHINGIZ</div><h1>Bugun sizga<br/><em>qanday yordam beray?</em></h1><p>Istalgan savolingizni bering. G'oyalarni rivojlantiring, muammolarni hal qiling yoki yangi narsalar yarating.</p><div className="suggestions">{suggestions.map(([icon,title,desc])=><button key={title} onClick={()=>send(desc)}><span>{icon}</span><div><b>{title}</b><small>{desc}</small></div><ArrowUp size={15}/></button>)}</div></div>:<div className="messages">{active.messages.map((m,i)=><div className={"message "+m.role} key={i}>{m.role==="assistant"&&<div className="message-avatar"><Sparkles size={15}/></div>}<div className="bubble"><small>{m.role==="user"?"Siz":"Java"}</small><div>{m.content}</div></div></div>)}{loading&&<div className="message assistant"><div className="message-avatar"><Sparkles size={15}/></div><div className="bubble"><small>Java</small><div className="dots">● ● ●</div></div></div>}<div ref={bottom}/></div>}
+        {!active?.messages.length?<div className="welcome"><div className="hero-icon"><img src="/java-mark.svg" alt="Java AI" /></div><div className="eyebrow">SIZNING AI YORDAMCHINGIZ</div><h1>Bugun sizga<br/><em>qanday yordam beray?</em></h1><p>Istalgan savolingizni bering. G'oyalarni rivojlantiring, muammolarni hal qiling yoki yangi narsalar yarating.</p><div className="suggestions">{suggestions.map(([icon,title,desc])=><button key={title} onClick={()=>send(desc)}><span>{icon}</span><div><b>{title}</b><small>{desc}</small></div><ArrowUp size={15}/></button>)}</div></div>:<div className="messages">{active.messages.map((m,i)=><div className={"message "+m.role} key={i}>{m.role==="assistant"&&<div className="message-avatar"><Sparkles size={15}/></div>}<div className="bubble"><small>{m.role==="user"?"Siz":"Java"}</small><div>{m.content}</div></div></div>)}{loading&&<div className="message assistant"><div className="message-avatar"><Sparkles size={15}/></div><div className="bubble"><small>Java</small><div className="dots">● ● ●</div></div></div>}<div ref={bottom}/></div>}
       </div>
       {error&&<div className="error">{error}</div>}
       <div className="composer-wrap"><form className="composer" onSubmit={e=>{e.preventDefault();send();}}><textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} placeholder="Java'ga xabar yuboring..." rows={1}/><div className="composer-bottom"><span>Java xato qilishi mumkin. Muhim ma'lumotlarni tekshiring.</span><button disabled={!input.trim()||loading} aria-label="Yuborish"><ArrowUp size={19}/></button></div></form><div className="foot">Gemini tomonidan quvvatlanadi · Java AI</div></div>
