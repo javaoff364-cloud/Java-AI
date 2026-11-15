@@ -1,26 +1,9 @@
 {
   "name": "java-ai",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint ."
-  },
-  "dependencies": {
-    "@google/genai": "^1.30.0",
-    "lucide-react": "^0.468.0",
-    "next": "15.5.29",
-    "react": "19.2.1",
-    "react-dom": "19.2.1"
-  },
-  "devDependencies": {
-    "@types/node": "^22.10.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "eslint": "^9.17.0",
-    "eslint-config-next": "15.5.29",
-    "typescript": "^5.7.2"
-  }
+  "type": "module",
+  "scripts": {"dev":"vite","build":"tsc --noEmit && vite build","preview":"vite preview","netlify:dev":"netlify dev"},
+  "dependencies": {"@google/genai":"^1.30.0","lucide-react":"^0.468.0","react":"19.2.1","react-dom":"19.2.1"},
+  "devDependencies": {"@types/node":"^22.10.0","@types/react":"^19.0.0","@types/react-dom":"^19.0.0","@vitejs/plugin-react":"^5.0.0","typescript":"^5.7.2","vite":"^6.4.1"}
 }
