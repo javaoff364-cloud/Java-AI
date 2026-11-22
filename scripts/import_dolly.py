@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build a balanced English + Uzbek Javus corpus from Hugging Face Aya Collection.
+"""Build a reproducible English + Uzbek corpus from Hugging Face Aya Collection.
 
-The script streams only the two requested language subsets and writes a reproducible
-1,000-record UTF-8 corpus. Install the optional data extra before running it.
+Only the selected language subsets are streamed; the full 155 GB collection is
+never downloaded. Install the optional data extra before running this script.
 """
 from __future__ import annotations
 
@@ -52,6 +52,22 @@ def unique_records(rows: Iterable[dict], limit: int) -> list[str]:
     return records
 
 
+def assemble_corpus(english: list[str], uzbek: list[str], target: int, seed: int = 42) -> list[str]:
+    """Validate language quotas and return a deterministic, balanced record list."""
+    if target < 20 or target % 2:
+        raise ValueError("target kamida 20 va juft son bo'lishi kerak")
+    half = target // 2
+    if len(english) != half or len(uzbek) != half:
+        raise ValueError(
+            f"Balanslangan corpus uchun {half} ta English va {half} ta Uzbek namuna kerak."
+        )
+    combined = list(english) + list(uzbek)
+    if len({record.split("\nJavus: ", 1)[0].casefold() for record in combined}) != target:
+        raise ValueError("Corpus ichida takroriy savollar bor.")
+    random.Random(seed).shuffle(combined)
+    return combined
+
+
 def load_language(language: str, limit: int, seed: int) -> list[str]:
     try:
         from datasets import load_dataset
@@ -71,28 +87,9 @@ def load_language(language: str, limit: int, seed: int) -> list[str]:
     if len(records) < limit:
         raise RuntimeError(
             f"{language} subsetidan {limit} ta emas, faqat {len(records)} ta sifatli "
-            "namuna olindi. Importni to'xtatdim; qisman dataset yozilmadi."
+            "namuna olindi. Qisman dataset yozilmadi."
         )
     return records
-
-
-def authored_seed_records() -> list[str]:
-    """Keep only the hand-written starter examples before imported Context records."""
-    if not TRAIN.exists():
-        return []
-    text = TRAIN.read_text(encoding="utf-8")
-    records = [
-        part.strip()
-        for part in text.split("\n\n")
-        if part.strip() and not part.lstrip().startswith("#")
-    ]
-    authored = []
-    for record in records:
-        if "\nContext:" in record:
-            break
-        if record.startswith("User: ") and "\nJavus: " in record:
-            authored.append(record)
-    return authored
 
 
 def main() -> None:
@@ -104,31 +101,24 @@ def main() -> None:
     if args.target < 20 or args.target % 2:
         parser.error("--target kamida 20 va juft son bo'lishi kerak")
 
-    seeds = authored_seed_records() if args.output.resolve() == TRAIN.resolve() else []
-    if len(seeds) >= args.target:
-        raise SystemExit("Qo'lda yozilgan seed namunalar target sonidan ko'p; targetni oshiring.")
+    quota = args.target // 2
+    english = load_language("english", quota, args.seed)
+    uzbek = load_language("uzbek", quota, args.seed)
+    records = assemble_corpus(english, uzbek, args.target, args.seed)
 
-    # Keep the starter examples, then add equal numbers from English and Uzbek.
-    remaining = args.target - len(seeds)
-    per_language = remaining // 2
-    english = load_language("english", per_language, args.seed)
-    uzbek = load_language("uzbek", remaining - per_language, args.seed)
-
-    combined = seeds + english + uzbek
-    random.Random(args.seed).shuffle(combined)
     header = (
         "# Javus bilingual instruction corpus\n"
-        f"# Total records: {len(combined)} (English + Uzbek)\n"
+        f"# Total records: {len(records)} (English: {quota}, Uzbek: {quota})\n"
         f"# Source: https://huggingface.co/datasets/{DATASET}\n"
         "# Dataset license: Apache-2.0; retain this attribution when redistributing.\n\n"
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     temporary = args.output.with_suffix(args.output.suffix + ".tmp")
-    temporary.write_text(header + "\n\n".join(combined) + "\n", encoding="utf-8")
+    temporary.write_text(header + "\n\n".join(records) + "\n", encoding="utf-8")
     temporary.replace(args.output)
     print(
-        f"Yakunlandi: {len(combined)} ta namuna | qo'lda: {len(seeds)} | "
-        f"English: {len(english)} | Uzbek: {len(uzbek)} | {args.output}"
+        f"Yakunlandi: {len(records)} ta namuna | English: {quota} | "
+        f"Uzbek: {quota} | {args.output}"
     )
 
 
