@@ -1,6 +1,7 @@
 import argparse
 import json
 import random
+import shutil
 from pathlib import Path
 
 import torch
@@ -12,8 +13,11 @@ from .tokenizer import ByteTokenizer
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "data" / "train.txt"
-CHECKPOINT = ROOT / "checkpoints" / "javus-small.pt"
-METRICS = ROOT / "checkpoints" / "javus-alpha-metrics.jsonl"
+CHECKPOINT_DIR = ROOT / "checkpoints"
+CHECKPOINT = CHECKPOINT_DIR / "javus-alpha.pt"
+BEST_CHECKPOINT = CHECKPOINT_DIR / "javus-alpha-best.pt"
+LEGACY_CHECKPOINT = CHECKPOINT_DIR / "javus-small.pt"
+METRICS = CHECKPOINT_DIR / "javus-alpha-metrics.jsonl"
 MODEL_NAME = "Javus Alpha"
 
 
@@ -60,8 +64,9 @@ def main():
     split = max(1, min(len(data) - 1, int(len(data) * 0.9)))
     train_data, val_data = data[:split], data[split:]
     checkpoint = None
-    if CHECKPOINT.is_file() and not args.fresh:
-        checkpoint = torch.load(CHECKPOINT, map_location="cpu", weights_only=False)
+    source_checkpoint = CHECKPOINT if CHECKPOINT.is_file() else LEGACY_CHECKPOINT
+    if source_checkpoint.is_file() and not args.fresh:
+        checkpoint = torch.load(source_checkpoint, map_location="cpu", weights_only=False)
         config = JavusConfig(**checkpoint["config"])
         print(f"{MODEL_NAME}: {checkpoint.get('step', 0)} qadamdan davom etiladi.")
     else:
@@ -110,6 +115,7 @@ def main():
             scores = evaluate(model, train_data, val_data, config.block_size,
                               batch_size=args.batch_size, device=device)
             validation_loss = scores["validation"]
+            improved = validation_loss is not None and validation_loss < smart_state.best_val_loss
             lr_changed = controller.update(validation_loss) if validation_loss is not None else False
             record = {
                 "model": MODEL_NAME, "step": global_step,
@@ -123,6 +129,8 @@ def main():
                 stream.write(json.dumps(record, ensure_ascii=False) + "\n")
 
             save_checkpoint(model, optimizer, config, global_step, device, smart_state)
+            if improved:
+                shutil.copy2(CHECKPOINT, BEST_CHECKPOINT)
             print(
                 f"{MODEL_NAME} | batch {batch_number} | +{args.steps} qadam | "
                 f"jami {global_step} | train loss {scores['train']:.4f} | "
