@@ -55,3 +55,21 @@ def test_generate_appends_requested_number_of_tokens():
     prompt = torch.tensor([[65, 66, 67]])
     result = model.generate(prompt, max_new_tokens=5)
     assert result.shape == (1, 8)
+
+
+def test_top_k_one_selects_only_the_most_likely_token():
+    torch.manual_seed(3)
+    model = JavusLanguageModel(tiny_config()).eval()
+    prompt = torch.tensor([[65, 66, 67]])
+    result = model.generate(prompt, max_new_tokens=4, top_k=1)
+    assert result.shape == (1, 7)
+    assert model.training is False
+
+
+def test_generate_rejects_invalid_sampling_parameters():
+    model = JavusLanguageModel(tiny_config())
+    prompt = torch.tensor([[65, 66]])
+    with pytest.raises(ValueError, match="temperature"):
+        model.generate(prompt, temperature=0)
+    with pytest.raises(ValueError, match="top_k"):
+        model.generate(prompt, top_k=0)
