@@ -23,13 +23,13 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("java-ai-chats");
+      const saved = localStorage.getItem("javus-ai-chats");
       if (saved) { const parsed = JSON.parse(saved) as Chat[]; setChats(parsed); if (parsed[0]) setActiveId(parsed[0].id); }
-      setDark(localStorage.getItem("java-ai-theme") !== "light");
+      setDark(localStorage.getItem("javus-ai-theme") !== "light");
     } catch {}
   },[]);
-  useEffect(() => { localStorage.setItem("java-ai-chats",JSON.stringify(chats)); },[chats]);
-  useEffect(() => { localStorage.setItem("java-ai-theme",dark?"dark":"light"); },[dark]);
+  useEffect(() => { localStorage.setItem("javus-ai-chats",JSON.stringify(chats)); },[chats]);
+  useEffect(() => { localStorage.setItem("javus-ai-theme",dark?"dark":"light"); },[dark]);
   useEffect(() => { bottom.current?.scrollIntoView({behavior:"smooth"}); },[active?.messages,loading]);
 
   function newChat() { const id=crypto.randomUUID(); setChats(old=>[{id,title:"Yangi suhbat",messages:[]},...old]); setActiveId(id); setError(""); }
@@ -45,31 +45,31 @@ export default function Home() {
     setInput(""); setLoading(true); setError("");
     try {
       const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:history})});
-      const data=await res.json(); if(!res.ok)throw new Error(data.error||"Xatolik yuz berdi.");
+      const data=await res.json(); if(!res.ok)throw new Error(data.error||data.detail||"Xatolik yuz berdi.");
       setChats(old=>old.map(c=>c.id===id?{...c,messages:[...c.messages,{role:"assistant",content:data.reply}]}:c));
-    } catch(e) { setError(e instanceof Error?e.message:"Java AI bilan bog'lanib bo'lmadi."); }
+    } catch(e) { setError(e instanceof Error?e.message:"Javus AI bilan bog'lanib bo'lmadi."); }
     finally { setLoading(false); }
   }
 
   return <main className={dark?"app dark":"app light"}>
     <aside className={sidebar?"sidebar":"sidebar closed"}>
-      <div className="brand"><img className="brand-logo" src="/java-mark.svg" alt="Java AI logo"/><span>Java<span className="ai">AI</span></span><button className="sidebar-close" onClick={()=>setSidebar(false)} aria-label="Yon panelni yopish"><X size={18}/></button></div>
+      <div className="brand"><img className="brand-logo" src="/javus-mark.svg" alt="Javus AI logo"/><span>Javus<span className="ai">AI</span></span><button className="sidebar-close" onClick={()=>setSidebar(false)} aria-label="Yon panelni yopish"><X size={18}/></button></div>
       <button className="new-chat" onClick={newChat}><Plus size={17}/> Yangi chat</button>
       <div className="label">SUHBATLAR</div>
       <div className="chat-list">{chats.map(c=><div className={"chat-item "+(c.id===activeId?"selected":"")} key={c.id}>
         <button className="chat-name" onClick={()=>setActiveId(c.id)}><MessageSquare size={15}/><span>{c.title}</span></button>
         <button className="delete" onClick={()=>deleteChat(c.id)} aria-label="Chatni o'chirish"><Trash2 size={14}/></button>
       </div>)}</div>
-      <div className="profile"><div className="avatar"><img src="/java-mark.svg" alt="Java AI"/></div><div><b>Java AI</b><small>Shaxsiy AI yordamchi</small></div><button onClick={()=>setDark(!dark)} aria-label="Mavzuni almashtirish">{dark?<Sun size={17}/>:<Moon size={17}/>}</button></div>
+      <div className="profile"><div className="avatar"><img src="/javus-mark.svg" alt="Javus AI"/></div><div><b>Javus AI</b><small>Experimental neural model</small></div><button onClick={()=>setDark(!dark)} aria-label="Mavzuni almashtirish">{dark?<Sun size={17}/>:<Moon size={17}/>}</button></div>
     </aside>
     {sidebar&&<button className="sidebar-backdrop" onClick={()=>setSidebar(false)} aria-label="Yon panelni yopish"/>}
     <section className="main">
-      <header className="topbar"><button className="icon" onClick={()=>setSidebar(!sidebar)} aria-label="Sidebar"><Menu size={19}/></button><div className="model"><i/> Java <span>· Gemini</span></div><span className="beta">BETA</span></header>
+      <header className="topbar"><button className="icon" onClick={()=>setSidebar(!sidebar)} aria-label="Sidebar"><Menu size={19}/></button><div className="model"><i/> Javus <span>· Core 0.1</span></div><span className="beta">EXPERIMENTAL</span></header>
       <div className="conversation">
-        {!active?.messages.length?<div className="welcome"><div className="hero-icon"><img src="/java-mark.svg" alt="Java AI"/></div><div className="eyebrow">SIZNING AI YORDAMCHINGIZ</div><h1>Bugun sizga<br/><em>qanday yordam beray?</em></h1><p>Istalgan savolingizni bering. G'oyalarni rivojlantiring, muammolarni hal qiling yoki yangi narsalar yarating.</p><div className="suggestions">{suggestions.map(([icon,title,desc])=><button key={title} onClick={()=>send(desc)}><span>{icon}</span><div><b>{title}</b><small>{desc}</small></div><ArrowUp size={15}/></button>)}</div></div>:<div className="messages">{active.messages.map((m,i)=><div className={"message "+m.role} key={i}>{m.role==="assistant"&&<div className="message-avatar"><Sparkles size={15}/></div>}<div className="bubble"><small>{m.role==="user"?"Siz":"Java"}</small><div>{m.content}</div></div></div>)}{loading&&<div className="message assistant"><div className="message-avatar"><Sparkles size={15}/></div><div className="bubble"><small>Java</small><div className="dots">● ● ●</div></div></div>}<div ref={bottom}/></div>}
+        {!active?.messages.length?<div className="welcome"><div className="hero-icon"><img src="/javus-mark.svg" alt="Javus AI"/></div><div className="eyebrow">JAVUS AI · NEURAL NETWORK</div><h1>Yangi bilimlarni<br/><em>birga o'rganamiz.</em></h1><p>Javus o'zimiz yaratgan tajribaviy neyron tarmoq. Hozircha kichik datasetda o'qitilmoqda.</p><div className="suggestions">{suggestions.map(([icon,title,desc])=><button key={title} onClick={()=>send(desc)}><span>{icon}</span><div><b>{title}</b><small>{desc}</small></div><ArrowUp size={15}/></button>)}</div></div>:<div className="messages">{active.messages.map((m,i)=><div className={"message "+m.role} key={i}>{m.role==="assistant"&&<div className="message-avatar"><Sparkles size={15}/></div>}<div className="bubble"><small>{m.role==="user"?"Siz":"Javus"}</small><div>{m.content}</div></div></div>)}{loading&&<div className="message assistant"><div className="message-avatar"><Sparkles size={15}/></div><div className="bubble"><small>Javus</small><div className="dots">● ● ●</div></div></div>}<div ref={bottom}/></div>}
       </div>
       {error&&<div className="error">{error}</div>}
-      <div className="composer-wrap"><form className="composer" onSubmit={e=>{e.preventDefault();send();}}><textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} placeholder="Java'ga xabar yuboring..." rows={1}/><div className="composer-bottom"><span>Java xato qilishi mumkin. Muhim ma'lumotlarni tekshiring.</span><button disabled={!input.trim()||loading} aria-label="Yuborish"><ArrowUp size={19}/></button></div></form><div className="foot">Gemini tomonidan quvvatlanadi · Java AI</div></div>
+      <div className="composer-wrap"><form className="composer" onSubmit={e=>{e.preventDefault();send();}}><textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} placeholder="Javus AI'ga xabar yuboring..." rows={1}/><div className="composer-bottom"><span>Javus tajribaviy model. Javoblar xato bo'lishi mumkin.</span><button disabled={!input.trim()||loading} aria-label="Yuborish"><ArrowUp size={19}/></button></div></form><div className="foot">O'z neyron tarmog'imiz · Javus AI</div></div>
     </section>
   </main>;
 }
