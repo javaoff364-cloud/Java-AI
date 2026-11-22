@@ -4,7 +4,7 @@ import pytest
 
 from javus.bpe_tokenizer import ByteBPETokenizer
 from javus.train import split_corpus
-from scripts.import_dolly import clean_pair, unique_records
+from scripts.import_dolly import assemble_corpus, clean_pair, unique_records
 
 
 def test_training_corpus_is_valid_utf8_and_has_complete_records():
@@ -42,6 +42,17 @@ def test_huggingface_rows_are_cleaned_and_deduplicated():
         "User: English question?\nJavus: A useful answer.",
     ]
     assert clean_pair("", "answer") is None
+
+
+def test_assembler_requires_equal_english_and_uzbek_quotas():
+    english = [f"User: English {i}?\nJavus: English answer {i}." for i in range(10)]
+    uzbek = [f"User: Uzbek {i}?\nJavus: O'zbekcha javob {i}." for i in range(10)]
+    records = assemble_corpus(english, uzbek, target=20, seed=7)
+    assert len(records) == 20
+    assert set(records) == set(english + uzbek)
+    assert records == assemble_corpus(english, uzbek, target=20, seed=7)
+    with pytest.raises(ValueError, match="Balanslangan"):
+        assemble_corpus(english, uzbek[:9], target=20)
 
 
 def test_split_is_reproducible_and_keeps_conversations_whole():
