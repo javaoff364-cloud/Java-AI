@@ -1,16 +1,10 @@
-node_modules
-dist
-.netlify
-.env*
-!.env.example
-.vercel
-.next
-*.log
-.DS_Store
-
-# Python
-.venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.venv/
+venv/
 checkpoints/
+*.pt
+*.pth
+*.log
+.DS_Store
