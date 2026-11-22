@@ -1,6 +1,8 @@
 import torch
 
-from javus.smart_training import AdaptiveLearningRate, SmartTrainingState
+from javus.config import JavusConfig
+from javus.model import JavusLanguageModel
+from javus.smart_training import AdaptiveLearningRate, SmartTrainingState, evaluate
 
 
 def test_smart_training_reduces_learning_rate_after_plateau():
@@ -17,3 +19,14 @@ def test_smart_training_reduces_learning_rate_after_plateau():
 def test_smart_training_state_round_trip():
     state = SmartTrainingState(best_val_loss=0.75, bad_evaluations=2, reductions=1)
     assert SmartTrainingState.from_dict(state.to_dict()) == state
+
+
+def test_validation_evaluation_handles_short_validation_split():
+    config = JavusConfig(block_size=4, n_embd=8, n_head=2, n_layer=1, dropout=0.0)
+    model = JavusLanguageModel(config)
+    train_data = torch.randint(0, 256, (20,))
+    validation_data = torch.randint(0, 256, (3,))
+    scores = evaluate(model, train_data, validation_data, block_size=4, batches=2)
+    assert scores["train"] is not None
+    assert scores["validation"] is not None
+    assert torch.isfinite(torch.tensor(scores["validation"]))
