@@ -1,3 +1,3 @@
-"""Javus AI: experimental neural network built from scratch."""
+"""Javus AI research project; first experimental model is Javus Alpha."""
 
 __version__ = "0.1.0"
