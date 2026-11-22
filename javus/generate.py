@@ -34,6 +34,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
     config = JavusConfig(**checkpoint["config"])
+    model_name = checkpoint.get("model_name", "Javus Alpha")
     state = checkpoint.get("tokenizer")
     if isinstance(state, dict) and state.get("type") == "byte_bpe":
         tokenizer = ByteBPETokenizer.from_state(state)
@@ -53,7 +54,7 @@ def main():
         top_k=args.top_k,
     )
     reply_tokens = output[0, prompt.shape[1]:].tolist()
-    print(f"[{MODEL_NAME}]")
+    print(f"[{model_name}]")
     print(clean_reply(tokenizer.decode(reply_tokens)))
 
 
