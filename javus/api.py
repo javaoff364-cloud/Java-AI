@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-import tempfile
 import urllib.request
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -14,13 +13,14 @@ from pydantic import BaseModel, Field
 
 from .config import JavusConfig
 from .model import JavusLanguageModel
-from .tokenizer import ByteTokenizer
+from .tokenizer import ByteTokenizer, CharTokenizer
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CHECKPOINT = ROOT / "checkpoints" / "javus-alpha.pt"
 MODEL: Optional[JavusLanguageModel] = None
 TOKENIZER = ByteTokenizer()
 DEVICE = torch.device("cpu")
+MODEL_NAME = "Javus Alpha"
 
 
 def checkpoint_path() -> Path:
@@ -40,7 +40,7 @@ def obtain_checkpoint() -> Path:
         )
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".download")
-    request = urllib.request.Request(url, headers={"User-Agent": "Javus-AI/0.1"})
+    request = urllib.request.Request(url, headers={"User-Agent": "Javus-AI/0.2"})
     with urllib.request.urlopen(request, timeout=90) as response, temporary.open("wb") as output:
         output.write(response.read())
     if temporary.stat().st_size == 0:
@@ -51,12 +51,19 @@ def obtain_checkpoint() -> Path:
 
 
 def load_model() -> None:
-    global MODEL
+    global MODEL, TOKENIZER
     path = obtain_checkpoint()
     payload = torch.load(path, map_location=DEVICE, weights_only=True)
     if not isinstance(payload, dict) or "config" not in payload or "model" not in payload:
         raise RuntimeError("Checkpoint formati Javus Alpha uchun mos emas.")
     config = JavusConfig(**payload["config"])
+    if "tokenizer" in payload:
+        TOKENIZER = CharTokenizer.from_state(payload["tokenizer"])
+        if TOKENIZER.vocab_size != config.vocab_size:
+            raise RuntimeError("Checkpoint tokenizer hajmi model config bilan mos emas.")
+    else:
+        # Backward compatibility for the currently deployed byte-token model.
+        TOKENIZER = ByteTokenizer()
     model = JavusLanguageModel(config).to(DEVICE)
     model.load_state_dict(payload["model"], strict=True)
     model.eval()
@@ -74,16 +81,15 @@ async def lifespan(_: FastAPI):
     torch.set_num_threads(max(1, int(os.getenv("JAVUS_TORCH_THREADS", "2"))))
     try:
         load_model()
-        print("Javus Alpha checkpoint yuklandi.", flush=True)
+        print(f"{MODEL_NAME} checkpoint yuklandi.", flush=True)
     except Exception as exc:
-        # Keep health/status endpoints available so a missing checkpoint is diagnosable.
-        print(f"Javus Alpha model yuklanmadi: {exc}", flush=True)
+        print(f"{MODEL_NAME} model yuklanmadi: {exc}", flush=True)
     yield
 
 
 app = FastAPI(
     title="Javus AI API",
-    version="0.1.0",
+    version="0.2.0",
     description="Javus Alpha PyTorch text-generation API.",
     lifespan=lifespan,
 )
@@ -92,8 +98,8 @@ app = FastAPI(
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     max_new_tokens: int = Field(default=80, ge=1, le=128)
-    temperature: float = Field(default=0.8, gt=0.05, le=2.0)
-    top_k: int = Field(default=40, ge=1, le=256)
+    temperature: float = Field(default=0.7, gt=0.05, le=2.0)
+    top_k: int = Field(default=20, ge=1, le=256)
 
 
 class ChatResponse(BaseModel):
@@ -101,18 +107,27 @@ class ChatResponse(BaseModel):
     reply: str
 
 
+def clean_reply(reply: str) -> str:
+    """Stop when the model begins generating the next training conversation."""
+    for marker in ("\nFoydalanuvchi:", "\n\nFoydalanuvchi:", "\nUser:"):
+        if marker in reply:
+            reply = reply.split(marker, 1)[0]
+    return reply.strip()
+
+
 @app.get("/")
 def root():
-    return {"name": "Javus AI API", "model": "Javus Alpha", "docs": "/docs"}
+    return {"name": "Javus AI API", "model": MODEL_NAME, "docs": "/docs"}
 
 
 @app.get("/health")
 def health():
     return {
         "status": "ok" if MODEL is not None else "model_unavailable",
-        "model": "Javus Alpha",
+        "model": MODEL_NAME,
         "loaded": MODEL is not None,
         "device": str(DEVICE),
+        "tokenizer": "unicode-character" if isinstance(TOKENIZER, CharTokenizer) else "utf8-byte-legacy",
     }
 
 
@@ -123,7 +138,6 @@ def chat(request: ChatRequest):
             status_code=503,
             detail="Model yuklanmagan. Server loglari va checkpoint sozlamalarini tekshiring.",
         )
-    # Match the prompt format used by the supervised conversation corpus.
     formatted_prompt = f"Foydalanuvchi: {request.message.strip()}\nJavus:"
     prompt_tokens = TOKENIZER.encode(formatted_prompt)
     if not prompt_tokens:
@@ -138,5 +152,5 @@ def chat(request: ChatRequest):
             top_k=request.top_k,
         )
     new_tokens = generated[0, len(context):].tolist()
-    reply = TOKENIZER.decode(new_tokens).strip()
-    return ChatResponse(model="Javus Alpha", reply=reply)
+    reply = clean_reply(TOKENIZER.decode(new_tokens))
+    return ChatResponse(model=MODEL_NAME, reply=reply)
