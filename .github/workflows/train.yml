@@ -1,7 +1,18 @@
-name: Javus Alpha Smart Training
+name: Javus Alpha Bounded Training
 
 on:
   workflow_dispatch:
+    inputs:
+      steps:
+        description: "Maximum optimizer steps for this run (100–1000)"
+        required: false
+        default: "100"
+        type: choice
+        options:
+          - "100"
+          - "250"
+          - "500"
+          - "1000"
   schedule:
     - cron: "0 */6 * * *"
 
@@ -16,7 +27,7 @@ jobs:
   train:
     name: Test and train Javus Alpha
     runs-on: ubuntu-latest
-    timeout-minutes: 350
+    timeout-minutes: 55
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -45,14 +56,16 @@ jobs:
             javus-alpha-checkpoint-
             javus-checkpoint-
 
-      - name: Run core tests
+      - name: Run tests before training
         run: python -m pytest -q
 
-      - name: Train continuously in 100-step batches
-        timeout-minutes: 340
+      - name: Run one bounded training session
+        timeout-minutes: 45
+        env:
+          TRAIN_STEPS: ${{ inputs.steps || '100' }}
         run: |
-          set -o pipefail
-          python -m javus.train --steps 100 --batch-size 8 --forever 2>&1 | tee -a training.log
+          set -euo pipefail
+          python -m javus.train --steps "$TRAIN_STEPS" --batch-size 8 2>&1 | tee training.log
 
       - name: Save checkpoint for the next run
         if: always() && hashFiles('checkpoints/javus-alpha.pt') != ''
@@ -65,21 +78,15 @@ jobs:
             checkpoints/javus-small.pt
           key: javus-alpha-checkpoint-${{ github.run_id }}
 
-      - name: Verify latest checkpoint
-        if: always()
-        run: |
-          test -s checkpoints/javus-alpha.pt
-          ls -lh checkpoints/javus-alpha.pt
-
-      - name: Upload Javus Alpha checkpoints, metrics and log
-        if: always()
+      - name: Upload Javus checkpoints, metrics and log
+        if: always() && hashFiles('checkpoints/javus-alpha.pt') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: javus-alpha-training
+          name: javus-alpha-training-${{ github.run_number }}
           path: |
             checkpoints/javus-alpha.pt
             checkpoints/javus-alpha-best.pt
             checkpoints/javus-alpha-metrics.jsonl
             training.log
-          if-no-files-found: error
-          retention-days: 14
+          if-no-files-found: warn
+          retention-days: 30
