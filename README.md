@@ -56,7 +56,7 @@ Har 100 qadamdan keyin checkpoint saqlab, uzluksiz davom etish:
 python -m javus.train --steps 100 --batch-size 8 --forever
 ```
 
-Mavjud checkpointni chetlab, noldan boshlash uchun `--fresh` qo'shing. Checkpoint `checkpoints/javus-small.pt` da saqlanadi (eski trening fayli bilan moslik uchun nom saqlab qolingan). Smart Training natijalari `checkpoints/javus-alpha-metrics.jsonl` ga yoziladi.
+Mavjud checkpointni chetlab, noldan boshlash uchun `--fresh` qo'shing. Asosiy checkpoint `checkpoints/javus-alpha.pt`, eng yaxshi validation natijali nusxa `checkpoints/javus-alpha-best.pt` da saqlanadi. Eski `javus-small.pt` checkpointi avtomatik o'qilib, yangi nom bilan davom ettiriladi. Smart Training natijalari `checkpoints/javus-alpha-metrics.jsonl` ga yoziladi.
 
 ## Smart Training nimalar qiladi?
 1. Har bir 100 qadamlik batch yakunida modelni baholaydi.
@@ -65,10 +65,10 @@ Mavjud checkpointni chetlab, noldan boshlash uchun `--fresh` qo'shing. Checkpoin
 4. Model, optimizer, global step va Smart Training holatini checkpoint'ga saqlaydi.
 5. Keyingi ishga tushishda oldingi holatdan davom etadi.
 
-Validation uchun datasetning 25% qismi ajratiladi. Dataset juda kichik bo'lgani sababli hozirgi metrikalar faqat pipeline sinovi hisoblanadi; sifatli o'zbekcha korpus kerak.
+Validation uchun datasetning 25% qismi ajratiladi; baholash validation matnidagi har bir keyingi tokenni oldingi kontekst bilan tekshiradi. Dataset juda kichik bo'lgani sababli hozirgi metrikalar faqat pipeline sinovi hisoblanadi; sifatli o'zbekcha korpus kerak.
 
 ## GitHub Actions
-Training workflow har 6 soatda rejalashtirilgan va qo'lda ham ishga tushirilishi mumkin. GitHub-hosted runner doimiy server emas: har bir ishga tushish vaqt limiti bilan cheklangan. Checkpoint Actions cache orqali keyingi ishga tushishga uzatiladi, artifact esa 14 kun saqlanadi. Bu doimiy va kafolatlangan model ombori o'rnini bosmaydi.
+Training workflow har 6 soatda rejalashtirilgan va qo'lda ham ishga tushirilishi mumkin. GitHub-hosted runner doimiy server emas: har bir ishga tushish vaqt limiti bilan cheklangan. Checkpoint Actions cache orqali keyingi ishga tushishga uzatiladi, asosiy va eng yaxshi checkpoint hamda metrikalar artifact sifatida 14 kun saqlanadi. Bu doimiy va kafolatlangan model ombori o'rnini bosmaydi.
 
 ## Matn generatsiyasi
 
