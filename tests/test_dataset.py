@@ -1,12 +1,14 @@
 from pathlib import Path
 
 
-def test_training_corpus_has_multilingual_examples_and_unicode():
+def test_training_corpus_is_english_only():
     corpus_path = Path(__file__).resolve().parents[1] / "data" / "train.txt"
     corpus = corpus_path.read_text(encoding="utf-8")
-    assert len(corpus.encode("utf-8")) >= 5000
-    assert corpus.count("Foydalanuvchi:") >= 40
-    assert corpus.count("Javus:") >= 100
-    for marker in ("User:", "Пользователь:", "Kullanıcı:", "المستخدم:", "用户:", "ユーザー:", "مرحبا", "你好", "ありがとう", "😊", "O‘", "Ў"):
-        assert marker in corpus
-    assert "\ufffd" not in corpus
+    records = [part.strip() for part in corpus.split("\\n\\n") if part.strip() and not part.lstrip().startswith("#")]
+    assert len(records) >= 50
+    assert all(record.startswith("User:") for record in records)
+    assert all("Javus:" in record for record in records)
+    assert all(all(ord(char) < 128 for char in record) for record in records)
+    assert "What is artificial intelligence?" in corpus
+    assert "How should an AI assistant handle uncertainty?" in corpus
+    assert "\\ufffd" not in corpus
