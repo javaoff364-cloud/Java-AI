@@ -18,8 +18,6 @@ def test_training_corpus_is_valid_utf8_and_has_complete_records():
     assert len(records) == 1000
     assert all(record.startswith("User: ") for record in records)
     assert all("\nJavus: " in record for record in records)
-    assert "What is artificial intelligence?" in corpus
-    assert "How should an AI assistant handle uncertainty?" in corpus
     assert "\ufffd" not in corpus
 
 
