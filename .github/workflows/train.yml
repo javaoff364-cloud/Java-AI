@@ -2,6 +2,8 @@ name: Javus AI continuous training
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
 
 permissions:
   contents: read
@@ -30,6 +32,14 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
+      - name: Restore previous training checkpoint
+        uses: actions/cache/restore@v4
+        with:
+          path: checkpoints/javus-small.pt
+          key: javus-checkpoint-${{ github.run_id }}
+          restore-keys: |
+            javus-checkpoint-
+
       - name: Run core tests
         run: python -m pytest -q
 
@@ -38,6 +48,13 @@ jobs:
         run: |
           set -o pipefail
           python -m javus.train --steps 100 --batch-size 8 --forever 2>&1 | tee -a training.log
+
+      - name: Save checkpoint for the next run
+        if: always() && hashFiles('checkpoints/javus-small.pt') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: checkpoints/javus-small.pt
+          key: javus-checkpoint-${{ github.run_id }}
 
       - name: Verify latest checkpoint
         if: always()
