@@ -87,12 +87,32 @@ class JavusLanguageModel(nn.Module):
         return logits, loss
 
     @torch.no_grad()
-    def generate(self, tokens: torch.Tensor, max_new_tokens: int = 80, temperature: float = 0.8):
+    def generate(
+        self,
+        tokens: torch.Tensor,
+        max_new_tokens: int = 80,
+        temperature: float = 0.8,
+        top_k: int | None = 40,
+    ):
+        """Generate tokens with temperature and optional top-k sampling."""
+        if temperature <= 0:
+            raise ValueError("temperature musbat bo'lishi kerak")
+        if top_k is not None and top_k < 1:
+            raise ValueError("top_k kamida 1 bo'lishi kerak")
+
+        was_training = self.training
         self.eval()
-        for _ in range(max_new_tokens):
-            context = tokens[:, -self.config.block_size:]
-            logits, _ = self(context)
-            logits = logits[:, -1, :] / max(temperature, 1e-5)
-            next_token = torch.multinomial(F.softmax(logits, dim=-1), num_samples=1)
-            tokens = torch.cat((tokens, next_token), dim=1)
-        return tokens
+        try:
+            for _ in range(max_new_tokens):
+                context = tokens[:, -self.config.block_size:]
+                logits, _ = self(context)
+                logits = logits[:, -1, :] / temperature
+                if top_k is not None and top_k < logits.size(-1):
+                    threshold = torch.topk(logits, top_k, dim=-1).values[:, -1, None]
+                    logits = logits.masked_fill(logits < threshold, float("-inf"))
+                probabilities = F.softmax(logits, dim=-1)
+                next_token = torch.multinomial(probabilities, num_samples=1)
+                tokens = torch.cat((tokens, next_token), dim=1)
+            return tokens
+        finally:
+            self.train(was_training)
