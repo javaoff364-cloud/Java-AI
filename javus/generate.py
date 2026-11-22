@@ -14,7 +14,7 @@ MODEL_NAME = "Javus Alpha"
 
 
 def clean_reply(reply: str) -> str:
-    for marker in ("\nFoydalanuvchi:", "\n\nFoydalanuvchi:", "\nUser:", "\n\nUser:", "\nПользователь:", "\n\nПользователь:", "\nKullanıcı:", "\n\nKullanıcı:", "\nالمستخدم:", "\n\nالمستخدم:", "\n用户:", "\n\n用户:", "\nユーザー:", "\n\nユーザー:"):
+    for marker in ("\nUser:", "\n\nUser:"):
         if marker in reply:
             reply = reply.split(marker, 1)[0]
     return reply.strip()
@@ -22,7 +22,7 @@ def clean_reply(reply: str) -> str:
 
 def main():
     parser = argparse.ArgumentParser(description="Generate text with Javus Alpha")
-    parser.add_argument("--prompt", default="Assalomu alaykum")
+    parser.add_argument("--prompt", default="Hello, how are you?")
     parser.add_argument("--max-new-tokens", type=int, default=80)
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--top-k", type=int, default=20)
@@ -40,7 +40,7 @@ def main():
     model = JavusLanguageModel(config).to(device)
     model.load_state_dict(checkpoint["model"])
     model.eval()
-    formatted_prompt = f"Foydalanuvchi: {args.prompt.strip()}\nJavus:"
+    formatted_prompt = f"User: {args.prompt.strip()}\nJavus:"
     prompt = torch.tensor([tokenizer.encode(formatted_prompt)], dtype=torch.long, device=device)
     output = model.generate(
         prompt,
