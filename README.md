@@ -42,17 +42,18 @@ pip install -e ".[data,test]"
 ## Hugging Face dataset
 
 The importer uses **CohereLabs/aya_collection_language_split**, streaming the `english` and `uzbek` subsets rather than downloading the entire multilingual collection. The dataset provides instruction/response pairs and is published under Apache-2.0. The importer:
-- retains the hand-written starter examples,
+- takes equal numbers of examples from English and Uzbek,
 - filters empty, duplicate, overly long, URL-containing, and invalid-Unicode rows,
-- takes equal numbers from English and Uzbek for the remaining slots,
 - shuffles records deterministically,
 - writes UTF-8 atomically and refuses to save a partial corpus.
 
-Run:
+Run locally:
 
 ```bash
 python scripts/import_dolly.py --target 1000
 ```
+
+Or open **Actions → Import bilingual Hugging Face dataset → Run workflow** to build, test, and commit the selected corpus size to the selected branch. This workflow is manual-only; it does not start model training.
 
 Source: https://huggingface.co/datasets/CohereLabs/aya_collection_language_split  
 License: Apache-2.0. Keep the source attribution and license information when redistributing data. Review examples for quality and suitability before using them in a release.
