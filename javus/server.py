@@ -9,7 +9,9 @@ from .model import JavusLanguageModel
 from .tokenizer import ByteTokenizer
 
 ROOT = Path(__file__).resolve().parents[1]
-CHECKPOINT = ROOT / "checkpoints" / "javus-small.pt"
+CHECKPOINT_DIR = ROOT / "checkpoints"
+CHECKPOINT = CHECKPOINT_DIR / "javus-alpha.pt"
+LEGACY_CHECKPOINT = CHECKPOINT_DIR / "javus-small.pt"
 MODEL_NAME = "Javus Alpha"
 app = FastAPI(title="Javus AI API", version="0.1.0")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -26,9 +28,10 @@ def load_model():
     global model
     if model is not None:
         return model
-    if not CHECKPOINT.exists():
+    checkpoint_path = CHECKPOINT if CHECKPOINT.exists() else LEGACY_CHECKPOINT
+    if not checkpoint_path.exists():
         raise HTTPException(status_code=503, detail=f"{MODEL_NAME} hali o'qitilmagan.")
-    checkpoint = torch.load(CHECKPOINT, map_location=device, weights_only=True)
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
     config = JavusConfig(**checkpoint["config"])
     model = JavusLanguageModel(config).to(device)
     model.load_state_dict(checkpoint["model"])
