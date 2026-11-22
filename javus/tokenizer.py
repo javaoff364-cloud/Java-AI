@@ -1,7 +1,7 @@
-"""Unicode character tokenizer for Javus Alpha.
+"""English character tokenizer for Javus Alpha.
 
-Character-level tokens keep Uzbek letters and UTF-8 text intact. The
-vocabulary is fitted once from the corpus and serialized into each checkpoint.
+Character-level tokens preserve English text. The vocabulary is fitted from the corpus
+and serialized into each checkpoint; the tokenizer can still represent Unicode when present.
 """
 from __future__ import annotations
 
