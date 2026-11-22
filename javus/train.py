@@ -9,7 +9,7 @@ import torch
 from .config import JavusConfig
 from .model import JavusLanguageModel
 from .smart_training import AdaptiveLearningRate, SmartTrainingState, evaluate
-from .tokenizer import ByteTokenizer
+from .tokenizer import CharTokenizer
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "data" / "train.txt"
@@ -21,11 +21,38 @@ METRICS = CHECKPOINT_DIR / "javus-alpha-metrics.jsonl"
 MODEL_NAME = "Javus Alpha"
 
 
-def save_checkpoint(model, optimizer, config, global_step, device, smart_state):
+def split_corpus(text: str, tokenizer: CharTokenizer):
+    """Split on complete paragraph boundaries, never in the middle of a pair."""
+    records = [
+        item.strip()
+        for item in text.split("\n\n")
+        if item.strip() and not item.lstrip().startswith("#")
+    ]
+    if len(records) < 4:
+        encoded = tokenizer.encode(text)
+        split = max(1, min(len(encoded) - 1, int(len(encoded) * 0.75)))
+        return (
+            torch.tensor(encoded[:split], dtype=torch.long),
+            torch.tensor(encoded[split:], dtype=torch.long),
+            len(records),
+        )
+
+    split = max(1, min(len(records) - 1, int(len(records) * 0.75)))
+    train_text = "\n\n".join(records[:split]) + "\n\n"
+    val_text = "\n\n".join(records[split:])
+    return (
+        torch.tensor(tokenizer.encode(train_text), dtype=torch.long),
+        torch.tensor(tokenizer.encode(val_text), dtype=torch.long),
+        len(records),
+    )
+
+
+def save_checkpoint(model, optimizer, config, tokenizer, global_step, device, smart_state):
     CHECKPOINT.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "model_name": MODEL_NAME,
         "config": config.to_dict(),
+        "tokenizer": tokenizer.to_dict(),
         "model": model.state_dict(),
         "optimizer": optimizer.state_dict(),
         "smart_training": smart_state.to_dict(),
@@ -55,22 +82,30 @@ def main():
     random.seed(args.seed)
     torch.manual_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer = ByteTokenizer()
     text = DATA_PATH.read_text(encoding="utf-8")
-    data = torch.tensor(tokenizer.encode(text), dtype=torch.long)
-    if len(data) < 40:
+    tokenizer = CharTokenizer.from_text(text)
+    train_data, val_data, record_count = split_corpus(text, tokenizer)
+    if len(train_data) < 40:
         raise SystemExit("Dataset juda kichik. data/train.txt fayliga ko'proq matn kiriting.")
 
-    split = max(1, min(len(data) - 1, int(len(data) * 0.75)))
-    train_data, val_data = data[:split], data[split:]
     checkpoint = None
     source_checkpoint = CHECKPOINT if CHECKPOINT.is_file() else LEGACY_CHECKPOINT
     if source_checkpoint.is_file() and not args.fresh:
         checkpoint = torch.load(source_checkpoint, map_location="cpu", weights_only=False)
-        config = JavusConfig(**checkpoint["config"])
+        if "tokenizer" not in checkpoint:
+            raise SystemExit(
+                "Eski byte-tokenizer checkpointi topildi. Unicode tokenizerga o'tish uchun "
+                "--fresh bilan yangi Javus Alpha treningini boshlang."
+            )
+        tokenizer = CharTokenizer.from_state(checkpoint["tokenizer"])
         print(f"{MODEL_NAME}: {checkpoint.get('step', 0)} qadamdan davom etiladi.")
+
+    if checkpoint is not None:
+        config = JavusConfig(**checkpoint["config"])
+        if config.vocab_size != tokenizer.vocab_size:
+            raise SystemExit("Checkpoint tokenizer hajmi model config bilan mos emas.")
     else:
-        config = JavusConfig()
+        config = JavusConfig(vocab_size=tokenizer.vocab_size)
 
     if len(train_data) <= config.block_size + 1:
         config.block_size = max(8, min(config.block_size, (len(train_data) - 2) // 2))
@@ -123,17 +158,20 @@ def main():
                 "train_loss": scores["train"], "validation_loss": validation_loss,
                 "learning_rate": optimizer.param_groups[0]["lr"],
                 "lr_reduced": lr_changed,
+                "dataset_records": record_count,
+                "tokenizer_vocab_size": tokenizer.vocab_size,
             }
             METRICS.parent.mkdir(parents=True, exist_ok=True)
             with METRICS.open("a", encoding="utf-8") as stream:
                 stream.write(json.dumps(record, ensure_ascii=False) + "\n")
 
-            save_checkpoint(model, optimizer, config, global_step, device, smart_state)
+            save_checkpoint(model, optimizer, config, tokenizer, global_step, device, smart_state)
             if improved:
                 shutil.copy2(CHECKPOINT, BEST_CHECKPOINT)
             print(
                 f"{MODEL_NAME} | batch {batch_number} | +{args.steps} qadam | "
-                f"jami {global_step} | train loss {scores['train']:.4f} | "
+                f"jami {global_step} | records {record_count} | vocab {tokenizer.vocab_size} | "
+                f"train loss {scores['train']:.4f} | "
                 f"validation loss {validation_loss if validation_loss is not None else 'N/A'} | "
                 f"LR {optimizer.param_groups[0]['lr']:.6g}"
                 + (" | LR avtomatik kamaytirildi" if lr_changed else ""),
