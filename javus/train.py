@@ -24,15 +24,33 @@ METRICS = CHECKPOINT_DIR / "javus-alpha-metrics.jsonl"
 MODEL_NAME = "Javus Alpha 2"
 
 
-def split_corpus(text: str, tokenizer: ByteBPETokenizer):
-    """Split complete conversation records, keeping each pair intact."""
+def split_corpus(text: str, tokenizer: ByteBPETokenizer, seed: int = 42):
+    """Validate records and make a reproducible, conversation-level train/validation split."""
     records = [
         item.strip()
         for item in text.split("\n\n")
         if item.strip() and not item.lstrip().startswith("#")
     ]
-    if len(records) < 4:
-        raise ValueError("Dataset kamida 4 ta to'liq suhbat yozuvidan iborat bo'lishi kerak.")
+    if len(records) < 20:
+        raise ValueError("Training uchun kamida 20 ta to'liq suhbat namunasi kerak.")
+
+    prompts = set()
+    for number, record in enumerate(records, start=1):
+        if not record.startswith("User: "):
+            raise ValueError(f"{number}-namuna 'User: ' bilan boshlanishi kerak.")
+        if record.count("\nJavus: ") != 1:
+            raise ValueError(f"{number}-namunada aynan bitta 'Javus: ' javobi bo'lishi kerak.")
+        prompt, answer = record[len("User: "):].split("\nJavus: ", 1)
+        if not prompt.strip() or not answer.strip():
+            raise ValueError(f"{number}-namunada savol yoki javob bo'sh.")
+        normalized = " ".join(prompt.casefold().split())
+        if normalized in prompts:
+            raise ValueError(f"Takroriy savol topildi: {prompt[:100]}")
+        prompts.add(normalized)
+
+    # Shuffle whole conversations so a source-ordered dataset does not create
+    # a validation set containing only the final source category.
+    random.Random(seed).shuffle(records)
     split = max(1, min(len(records) - 1, int(len(records) * 0.9)))
     train_text = "\n\n".join(records[:split]) + "\n\n"
     val_text = "\n\n".join(records[split:])
@@ -105,11 +123,13 @@ def main():
         else:
             old_tokenizer = ByteBPETokenizer.from_state(state)
             expected_tokenizer = ByteBPETokenizer.from_text(text, args.bpe_merges)
-            if old_tokenizer.to_dict() != expected_tokenizer.to_dict():
+            if (old_tokenizer.to_dict() != expected_tokenizer.to_dict()
+                    or candidate.get("corpus_sha256") != corpus_sha256):
                 CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
-                if not PREVIOUS_CHECKPOINT.exists():
-                    shutil.copy2(source_checkpoint, PREVIOUS_CHECKPOINT)
-                print("Dataset or BPE vocabulary changed; preserved the old checkpoint and starting a fresh Alpha 2 model.", flush=True)
+                archive = CHECKPOINT_DIR / f"javus-alpha-before-dataset-{str(candidate.get('corpus_sha256', 'unknown'))[:12]}.pt"
+                if not archive.exists():
+                    shutil.copy2(source_checkpoint, archive)
+                print("Training corpus or BPE vocabulary changed; archived the old checkpoint and starting a fresh model.", flush=True)
                 tokenizer = expected_tokenizer
             else:
                 tokenizer = old_tokenizer
@@ -118,7 +138,7 @@ def main():
     else:
         tokenizer = ByteBPETokenizer.from_text(text, args.bpe_merges)
 
-    train_data, val_data, record_count = split_corpus(text, tokenizer)
+    train_data, val_data, record_count = split_corpus(text, tokenizer, seed=args.seed)
     if len(train_data) < 40:
         raise SystemExit("Dataset is too small; add more complete conversation examples.")
 

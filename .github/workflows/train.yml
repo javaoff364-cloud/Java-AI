@@ -13,8 +13,6 @@ on:
           - "250"
           - "500"
           - "1000"
-  schedule:
-    - cron: "0 */6 * * *"
 
 permissions:
   contents: read

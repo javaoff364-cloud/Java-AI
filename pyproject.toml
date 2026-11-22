@@ -8,11 +8,18 @@ version = "0.1.0"
 description = "Javus AI neural network research project"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
-dependencies = ["torch>=2.2.0"]
+dependencies = ["torch>=2.2.0", "numpy>=1.26"]
 
 [project.optional-dependencies]
 test = ["pytest>=8.0.0"]
+data = ["datasets>=3.0.0,<5.0.0"]
 api = ["fastapi>=0.110.0", "uvicorn[standard]>=0.27.0", "pydantic>=2.6.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["javus*"]
+exclude = ["tests*", "scripts*"]
+namespaces = false

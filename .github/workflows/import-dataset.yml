@@ -1,0 +1,66 @@
+name: Import bilingual Hugging Face dataset
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Number of bilingual examples to import"
+        required: true
+        default: "1000"
+        type: choice
+        options:
+          - "1000"
+          - "2000"
+          - "5000"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: javus-dataset-import-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  import:
+    name: Build and validate bilingual corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - name: Checkout selected branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install project and Hugging Face data dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+          python -m pip install -e ".[data,test]"
+
+      - name: Stream English and Uzbek subsets from Hugging Face
+        env:
+          DATASET_SIZE: ${{ inputs.target }}
+        run: python scripts/import_dolly.py --target "$DATASET_SIZE"
+
+      - name: Validate imported corpus
+        run: python -m pytest -q
+
+      - name: Commit validated corpus to this branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/train.txt
+          if git diff --cached --quiet; then
+            echo "The generated corpus is unchanged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "data: import bilingual Hugging Face corpus"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
