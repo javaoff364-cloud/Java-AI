@@ -88,3 +88,36 @@ python -m javus.generate --prompt "Assalomu alaykum" --max-new-tokens 40
 
 ## Litsenziya
 Apache-2.0
+
+## Online API (Javus Alpha)
+
+API serveri FastAPI va PyTorch asosida ishlaydi. Model server ishga tushganda `.pt` checkpointni xotiraga yuklaydi.
+
+### Lokal ishga tushirish
+
+```bash
+pip install -r requirements.txt
+export JAVUS_CHECKPOINT_PATH=checkpoints/javus-alpha.pt
+uvicorn javus.api:app --host 0.0.0.0 --port 8000
+```
+
+### Endpointlar
+
+- `GET /` — API haqida ma'lumot
+- `GET /health` — server va model holati
+- `POST /chat` — Javus Alpha bilan matnli suhbat
+- `GET /docs` — interaktiv API hujjatlari
+
+So'rov namunasi:
+
+```json
+{
+  "message": "Assalomu alaykum",
+  "max_new_tokens": 80,
+  "temperature": 0.8
+}
+```
+
+Agar `JAVUS_API_KEY` o'rnatilgan bo'lsa, `POST /chat` so'roviga `X-API-Key` headerini qo'shish shart. Serverda checkpoint bo'lishi uchun `JAVUS_CHECKPOINT_PATH` yoki yuklab olish mumkin bo'lgan `JAVUS_CHECKPOINT_URL` belgilanadi. Maxfiy checkpoint URL ishlatilsa, uni ommaviy repoga yozmang.
+
+Render konfiguratsiyasi `render.yaml` ichida. Render deploy paytida `JAVUS_CHECKPOINT_URL` qiymatini Dashboard orqali kiriting. PyTorch xotira talab qilgani uchun deploy rejasini tanlashda RAM cheklovini hisobga oling; bepul kichik instansiya yetmasligi mumkin.
