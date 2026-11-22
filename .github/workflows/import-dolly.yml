@@ -1,6 +1,12 @@
 name: Import Dolly training data
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - dataset-1000-english
+    paths:
+      - scripts/import_dolly.py
+      - .github/workflows/import-dolly.yml
 permissions:
   contents: write
 jobs:
@@ -15,10 +21,14 @@ jobs:
           python-version: "3.11"
       - name: Build the 1,000-example corpus
         run: python scripts/import_dolly.py
-      - name: Commit corpus
+      - name: Commit corpus if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/train.txt
-          git commit -m "Add filtered 1000-example Dolly corpus"
-          git push
+          if git diff --cached --quiet; then
+            echo "Corpus is already current."
+          else
+            git commit -m "Add filtered 1000-example Dolly corpus"
+            git push
+          fi
