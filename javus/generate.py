@@ -14,7 +14,7 @@ MODEL_NAME = "Javus Alpha"
 
 
 def clean_reply(reply: str) -> str:
-    for marker in ("\nFoydalanuvchi:", "\n\nFoydalanuvchi:", "\nUser:", "\n\nUser:", "\nПользователь:", "\n\nПользователь:"):
+    for marker in ("\nFoydalanuvchi:", "\n\nFoydalanuvchi:", "\nUser:", "\n\nUser:", "\nПользователь:", "\n\nПользователь:", "\nKullanıcı:", "\n\nKullanıcı:", "\nالمستخدم:", "\n\nالمستخدم:", "\n用户:", "\n\n用户:", "\nユーザー:", "\n\nユーザー:"):
         if marker in reply:
             reply = reply.split(marker, 1)[0]
     return reply.strip()
