@@ -6,7 +6,7 @@ Birinchi modelimiz: **Javus Alpha**. Hozirgi holati — kichik, faqat matn bilan
 
 ## Texnologiyalar
 - Python 3.10+ va PyTorch
-- 256 tokenli UTF-8 byte tokenizer
+- Unicode belgilariga asoslangan tokenizer (o'zbek lotin/kirill matni uchun)
 - Decoder-only Transformer, causal self-attention
 - AdamW, cross-entropy, gradient clipping
 - Smart Training, validation loss monitoring va adaptive learning rate
@@ -39,7 +39,7 @@ pip install -r requirements.txt
 
 ## Dataset
 
-`data/train.txt` — Javus uchun mualliflik bilan yozilgan boshlang'ich o'zbekcha suhbat korpusi. Unda foydalanuvchi savollari va Javus javoblari bir xil formatda berilgan. Korpus hali kichik; sifatli model uchun mavzular, uslublar va misollar sonini sezilarli oshirish, matnlarni tekshirish va litsenziyasi aniq ma'lumotlardan foydalanish kerak.
+`data/train.txt` — Javus uchun mualliflik bilan yozilgan boshlang'ich o'zbekcha suhbat korpusi. Treningda validation ajratish butun suhbat-paragraf chegaralarida amalga oshiriladi. Unda foydalanuvchi savollari va Javus javoblari bir xil formatda berilgan. Korpus hali kichik; sifatli model uchun mavzular, uslublar va misollar sonini sezilarli oshirish, matnlarni tekshirish va litsenziyasi aniq ma'lumotlardan foydalanish kerak.
 
 Yangi ma'lumot qo'shganda:
 - takroriy va bir-biriga zid misollarni kamaytiring;
@@ -86,7 +86,7 @@ Validation uchun datasetning 25% qismi ajratiladi. Hozirgi korpus kichik bo'lgan
 python -m javus.generate --prompt "Assalomu alaykum" --max-new-tokens 40
 ```
 
-Generatsiyada temperature va top-k sampling ishlatiladi. Bu juda kam ehtimolli tokenlarni cheklaydi, lekin kichik dataset yoki kam trening muammosini o'zi hal qilmaydi.
+Generatsiyada temperature va top-k sampling ishlatiladi. Unicode character tokenizer har bir Unicode belgini bitta token qiladi va lug'at checkpoint ichida saqlanadi. Eski byte-tokenizer checkpointidan yangi tokenizerga o'tishda `python -m javus.train --fresh` bilan yangi trening boshlash kerak. Bu juda kam ehtimolli tokenlarni cheklaydi, lekin kichik dataset yoki kam trening muammosini o'zi hal qilmaydi.
 
 ## GitHub Actions
 Training workflow har 6 soatda rejalashtirilgan va qo'lda ham ishga tushirilishi mumkin. GitHub-hosted runner doimiy server emas: har bir ishga tushish vaqt limiti bilan cheklangan. Checkpoint Actions cache orqali keyingi ishga tushishga uzatiladi, asosiy va eng yaxshi checkpoint hamda metrikalar artifact sifatida 14 kun saqlanadi.
@@ -130,7 +130,10 @@ Agar `JAVUS_API_KEY` o'rnatilgan bo'lsa, `POST /chat` so'roviga `X-API-Key` head
 - [x] Top-k sampling va xotirasi cheklangan validation
 - [ ] Keng, toza va litsenziyasi tekshirilgan o'zbekcha dataset
 - [ ] Alohida benchmark va sifatli test to'plami
-- [ ] Tokenizer va arxitekturani takomillashtirish
+- [x] O'zbek matni uchun Unicode character tokenizer
+- [x] Tokenizer lug'atini checkpoint ichida saqlash
+- [x] Eski byte-tokenizer checkpointlari bilan API mosligi
+- [ ] Tokenizer va arxitekturani keyingi takomillashtirish
 - [ ] Vision va audio modullari
 - [ ] Javus AI 1.0
 
