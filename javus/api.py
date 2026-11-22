@@ -109,7 +109,7 @@ class ChatResponse(BaseModel):
 
 def clean_reply(reply: str) -> str:
     """Stop when the model begins generating the next training conversation."""
-    for marker in ("\nFoydalanuvchi:", "\n\nFoydalanuvchi:", "\nUser:"):
+    for marker in ("\nFoydalanuvchi:", "\n\nFoydalanuvchi:", "\nUser:", "\n\nUser:", "\nПользователь:", "\n\nПользователь:"):
         if marker in reply:
             reply = reply.split(marker, 1)[0]
     return reply.strip()
