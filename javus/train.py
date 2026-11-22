@@ -95,12 +95,16 @@ def main():
     if source_checkpoint.is_file() and not args.fresh:
         checkpoint = torch.load(source_checkpoint, map_location="cpu", weights_only=False)
         if "tokenizer" not in checkpoint:
-            raise SystemExit(
-                "Legacy byte-tokenizer checkpoint detected. Start a new Unicode model with --fresh."
-            )
-        tokenizer = CharTokenizer.from_state(checkpoint["tokenizer"])
+            CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+            if not PREVIOUS_CHECKPOINT.exists():
+                shutil.copy2(source_checkpoint, PREVIOUS_CHECKPOINT)
+            print("Legacy byte-tokenizer checkpoint preserved; initializing the Unicode model.", flush=True)
+            checkpoint = None
+            tokenizer = CharTokenizer.from_text(text)
+        else:
+            tokenizer = CharTokenizer.from_state(checkpoint["tokenizer"])
         known_chars = set(tokenizer.itos)
-        missing_chars = sorted(set(text) - known_chars)
+        missing_chars = sorted(set(text) - known_chars) if checkpoint is not None else [] 
         if missing_chars:
             # A larger vocabulary changes embedding dimensions. Preserve the old
             # checkpoint for recovery, then start with a matching multilingual vocab.
