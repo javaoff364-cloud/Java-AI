@@ -1,15 +1,19 @@
 # Javus AI
 
-**Javus AI** is an independent Python/PyTorch neural-network research project. Its first model, **Javus Alpha**, is a small experimental text-only Transformer — not yet a production-ready assistant.
+**Javus AI** is an independent Python/PyTorch neural-network research project. **Javus Alpha 2** is a from-scratch, decoder-only Transformer experiment intended to grow into an English conversational assistant. It does not load pretrained model weights or call an external LLM.
 
-## Current stack
+## Alpha 2 foundation
 
 - Python 3.10+ and PyTorch
-- Decoder-only Transformer with causal self-attention
-- Unicode character tokenizer with a checkpointed vocabulary
-- English-only starter corpus for the current training stage
-- AdamW, cross-entropy, gradient clipping, validation monitoring, and adaptive learning rate
-- Resumable checkpoints, JSONL metrics, pytest, and GitHub Actions
+- Decoder-only Transformer with causal self-attention and pre-normalized residual blocks
+- GPT-style parameter initialization and tied input/output embeddings
+- Deterministic byte-level BPE tokenizer learned from the current corpus
+- UTF-8 byte fallback, so unseen Unicode text can be encoded without an unknown-character token
+- English-only seed corpus for this development phase
+- AdamW, cross-entropy, gradient clipping, validation monitoring, adaptive learning rate
+- Resumable checkpoints, JSONL metrics, pytest, and bounded GitHub Actions training
+
+**Important:** the current corpus is only a small starter set. A better tokenizer and architecture do not create language knowledge by themselves. Javus will not become a useful assistant until we add a large, carefully reviewed training corpus and evaluate it on questions it has never seen.
 
 ## Install in Termux
 
@@ -35,20 +39,16 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## Dataset and language support
+## Dataset
 
-`data/train.txt` currently contains English-only, manually authored conversation examples. The tokenizer remains Unicode-capable, but the training corpus is intentionally English-only for this stage.
+`data/train.txt` currently contains English-only, manually authored conversation examples. Each conversation is separated by a blank line:
 
-The tokenizer maps Unicode code points to IDs and stores its exact vocabulary in each checkpoint. It can round-trip characters present in its vocabulary. A character absent from the vocabulary maps to `<unk>`; add new scripts/symbols to the corpus and retrain with a compatible vocabulary before expecting the model to generate them.
+```text
+User: Why is the sky blue?
+Javus: Air molecules scatter shorter blue wavelengths of sunlight more than longer red wavelengths.
+```
 
-This is a small seed corpus for testing the training pipeline, not a large language dataset. It does not make Javus fluent in all listed languages. A useful assistant requires a much larger, reviewed, balanced, and legally usable corpus, plus a separate benchmark and human evaluation.
-
-When adding data:
-- keep each conversation example complete and separate by a blank line;
-- check spelling, facts, duplicates, and language balance;
-- do not include private or sensitive information;
-- record data sources and licenses;
-- keep validation/test examples separate from training examples.
+Keep examples accurate, natural, diverse, and free of private information. Track source and license information when adding external data. Keep evaluation questions separate from training data to avoid testing memorization.
 
 ## Tests
 
@@ -56,7 +56,7 @@ When adding data:
 python -m pytest -q
 ```
 
-## Train Javus Alpha
+## Train Javus Alpha 2
 
 Run one bounded session (100 optimizer steps by default):
 
@@ -64,40 +64,28 @@ Run one bounded session (100 optimizer steps by default):
 python -m javus.train --steps 100 --batch-size 8
 ```
 
-The run saves a checkpoint after the batch. A later run resumes from that checkpoint. To explicitly continue repeated batches until stopped manually:
+The first Alpha 2 run detects the older tokenizer checkpoint, preserves it as `checkpoints/javus-alpha-pre-alpha2.pt`, and initializes a new byte-BPE model. Later runs resume only when the saved tokenizer vocabulary matches the current corpus.
+
+To intentionally start the Alpha 2 model from scratch:
 
 ```bash
-python -m javus.train --steps 100 --batch-size 8 --forever
+python -m javus.train --steps 100 --batch-size 8 --fresh
 ```
 
-To intentionally ignore existing model state and start from scratch:
+To change the number of BPE merge rules on a fresh model:
 
 ```bash
-python -m javus.train --steps 100 --fresh
+python -m javus.train --steps 100 --bpe-merges 128 --fresh
 ```
 
-Files created locally:
-- `checkpoints/javus-alpha.pt` — latest model, optimizer, tokenizer, step, and RNG state;
-- `checkpoints/javus-alpha-best.pt` — best validation checkpoint;
-- `checkpoints/javus-alpha-metrics.jsonl` — per-run metrics;
-- `checkpoints/javus-alpha-pre-multilingual.pt` — preserved previous checkpoint if a new vocabulary is required.
+Training is bounded by default. The optional `--forever` flag is for deliberate local experiments only; it should not be used in GitHub Actions.
 
-When the dataset vocabulary changes, the trainer preserves the previous checkpoint and starts a new model with a matching vocabulary. This prevents old multilingual weights and incompatible token IDs from contaminating the English-only training run.
+## Checkpoints and metrics
 
-## Training behavior
-
-1. The trainer splits complete conversation paragraphs into 90% training and 10% validation data.
-2. It performs the requested maximum number of optimizer steps per run.
-3. It evaluates train and validation loss and adjusts learning rate when validation stops improving.
-4. It saves model weights, optimizer state, tokenizer vocabulary, global step, and random states.
-5. The next run resumes from the latest checkpoint when the vocabulary is compatible.
-6. Ctrl+C requests a safe checkpoint save.
-
-## GitHub Actions
-
-The training workflow is deliberately **bounded**. It no longer runs an infinite loop inside one GitHub Actions job. It runs a finite number of steps (100 by default; manual choices include 250, 500, or 1000), saves a checkpoint, uploads training artifacts for 30 days, and can resume from the Actions cache on a later scheduled or manual run. The workflow is scheduled every six hours.
-
-GitHub-hosted runners are temporary and have execution limits. For long-term training, regularly download and back up the checkpoint artifacts.
+- `checkpoints/javus-alpha.pt` — latest model, optimizer, BPE merges, step, and RNG state
+- `checkpoints/javus-alpha-best.pt` — best validation checkpoint
+- `checkpoints/javus-alpha-metrics.jsonl` — per-run metrics
+- `checkpoints/javus-alpha-pre-alpha2.pt` — preserved previous model when migrating to Alpha 2
 
 ## Generate text
 
@@ -107,7 +95,7 @@ python -m javus.generate --prompt "Hello, how are you?" --max-new-tokens 40
 
 ## HTTP API
 
-Run the FastAPI server after a checkpoint exists:
+After a checkpoint exists:
 
 ```bash
 export JAVUS_CHECKPOINT_PATH=checkpoints/javus-alpha.pt
@@ -116,25 +104,29 @@ uvicorn javus.api:app --host 0.0.0.0 --port 8000
 
 Endpoints:
 - `GET /` — API information
-- `GET /health` — model status
+- `GET /health` — model status and tokenizer type
 - `POST /chat` — text generation
 - `GET /docs` — interactive API documentation
 
 Set `JAVUS_API_KEY` to protect `POST /chat`. Never commit API keys or private checkpoint URLs.
 
+## GitHub Actions
+
+The training workflow runs a finite number of steps (100 by default; manual choices include 250, 500, or 1000), saves a checkpoint, and uploads artifacts for 30 days. It is scheduled every six hours. A separate CI workflow runs tests on pushes and pull requests.
+
 ## Roadmap
 
 - [x] Python Transformer prototype
-- [x] Unicode character tokenizer
+- [x] Byte-level BPE tokenizer foundation
 - [x] English-only starter corpus
 - [x] Checkpoint and resume support
-- [x] Bounded GitHub Actions training
-- [x] Core and dataset tests
-- [ ] Larger, reviewed, and licensed English corpus
-- [ ] Separate evaluation benchmark
-- [ ] Improve tokenizer and model architecture
-- [ ] Vision and audio research modules
-- [ ] Javus AI 1.0
+- [x] Bounded training workflow
+- [x] Core, dataset, and tokenizer tests
+- [ ] Expand the English corpus substantially with reviewed/licensed data
+- [ ] Build a held-out assistant evaluation benchmark
+- [ ] Improve conversation formatting and generation quality
+- [ ] Train and evaluate larger model sizes
+- [ ] Research vision and audio after text quality is established
 
 ## License
 

@@ -11,7 +11,7 @@ import torch
 from .config import JavusConfig
 from .model import JavusLanguageModel
 from .smart_training import AdaptiveLearningRate, SmartTrainingState, evaluate
-from .tokenizer import CharTokenizer
+from .bpe_tokenizer import ByteBPETokenizer
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "data" / "train.txt"
@@ -19,12 +19,12 @@ CHECKPOINT_DIR = ROOT / "checkpoints"
 CHECKPOINT = CHECKPOINT_DIR / "javus-alpha.pt"
 BEST_CHECKPOINT = CHECKPOINT_DIR / "javus-alpha-best.pt"
 LEGACY_CHECKPOINT = CHECKPOINT_DIR / "javus-small.pt"
-PREVIOUS_CHECKPOINT = CHECKPOINT_DIR / "javus-alpha-pre-multilingual.pt"
+PREVIOUS_CHECKPOINT = CHECKPOINT_DIR / "javus-alpha-pre-alpha2.pt"
 METRICS = CHECKPOINT_DIR / "javus-alpha-metrics.jsonl"
-MODEL_NAME = "Javus Alpha"
+MODEL_NAME = "Javus Alpha 2"
 
 
-def split_corpus(text: str, tokenizer: CharTokenizer):
+def split_corpus(text: str, tokenizer: ByteBPETokenizer):
     """Split complete conversation records, keeping each pair intact."""
     records = [
         item.strip()
@@ -73,6 +73,7 @@ def main():
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--bpe-merges", type=int, default=128)
     parser.add_argument("--forever", action="store_true",
                         help="Explicitly continue batches until manually stopped")
     parser.add_argument("--fresh", action="store_true",
@@ -93,37 +94,29 @@ def main():
     source_checkpoint = CHECKPOINT if CHECKPOINT.is_file() else LEGACY_CHECKPOINT
     checkpoint = None
     if source_checkpoint.is_file() and not args.fresh:
-        checkpoint = torch.load(source_checkpoint, map_location="cpu", weights_only=False)
-        if "tokenizer" not in checkpoint:
+        candidate = torch.load(source_checkpoint, map_location="cpu", weights_only=False)
+        state = candidate.get("tokenizer")
+        if not isinstance(state, dict) or state.get("type") != "byte_bpe":
             CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
             if not PREVIOUS_CHECKPOINT.exists():
                 shutil.copy2(source_checkpoint, PREVIOUS_CHECKPOINT)
-            print("Legacy byte-tokenizer checkpoint preserved; initializing the Unicode model.", flush=True)
-            checkpoint = None
-            tokenizer = CharTokenizer.from_text(text)
+            print("Preserved the previous model; initializing Javus Alpha 2 with byte-BPE.", flush=True)
+            tokenizer = ByteBPETokenizer.from_text(text, args.bpe_merges)
         else:
-            tokenizer = CharTokenizer.from_state(checkpoint["tokenizer"])
-        expected_tokenizer = CharTokenizer.from_text(text)
-        vocabulary_changed = checkpoint is not None and set(tokenizer.itos) != set(expected_tokenizer.itos)
-        if vocabulary_changed:
-            # A changed corpus vocabulary changes embedding dimensions and language scope.
-            # Preserve the previous model, then start with a matching English-focused model.
-            CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
-            if not PREVIOUS_CHECKPOINT.exists():
-                shutil.copy2(source_checkpoint, PREVIOUS_CHECKPOINT)
-            print(
-                "Dataset vocabulary changed; preserved the previous checkpoint and "
-                "starting a fresh model with the current corpus vocabulary.",
-                flush=True,
-            )
-            checkpoint = None
-            tokenizer = expected_tokenizer
-        elif checkpoint is not None:
-            if checkpoint.get("corpus_sha256") not in (None, corpus_sha256):
-                print("Dataset text changed; tokenizer remains compatible, resuming weights.", flush=True)
-            print(f"{MODEL_NAME}: resuming from step {checkpoint.get('step', 0)}.", flush=True)
+            old_tokenizer = ByteBPETokenizer.from_state(state)
+            expected_tokenizer = ByteBPETokenizer.from_text(text, args.bpe_merges)
+            if old_tokenizer.to_dict() != expected_tokenizer.to_dict():
+                CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+                if not PREVIOUS_CHECKPOINT.exists():
+                    shutil.copy2(source_checkpoint, PREVIOUS_CHECKPOINT)
+                print("Dataset or BPE vocabulary changed; preserved the old checkpoint and starting a fresh Alpha 2 model.", flush=True)
+                tokenizer = expected_tokenizer
+            else:
+                tokenizer = old_tokenizer
+                checkpoint = candidate
+                print(f"{MODEL_NAME}: resuming from step {checkpoint.get('step', 0)}.", flush=True)
     else:
-        tokenizer = CharTokenizer.from_text(text)
+        tokenizer = ByteBPETokenizer.from_text(text, args.bpe_merges)
 
     train_data, val_data, record_count = split_corpus(text, tokenizer)
     if len(train_data) < 40:

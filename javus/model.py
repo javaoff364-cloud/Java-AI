@@ -74,6 +74,18 @@ class JavusLanguageModel(nn.Module):
         self.final_norm = nn.LayerNorm(config.n_embd)
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
         self.lm_head.weight = self.token_embedding.weight
+        self.apply(self._init_weights)
+        residual_std = 0.02 / (2 * config.n_layer) ** 0.5
+        for block in self.blocks:
+            nn.init.normal_(block.attn.proj.weight, mean=0.0, std=residual_std)
+            nn.init.normal_(block.ff.net[2].weight, mean=0.0, std=residual_std)
+
+    @staticmethod
+    def _init_weights(module: nn.Module) -> None:
+        if isinstance(module, (nn.Linear, nn.Embedding)):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if isinstance(module, nn.Linear) and module.bias is not None:
+                nn.init.zeros_(module.bias)
 
     def forward(self, tokens: torch.Tensor, targets: torch.Tensor | None = None):
         batch, seq_len = tokens.shape

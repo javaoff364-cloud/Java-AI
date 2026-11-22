@@ -5,12 +5,13 @@ import torch
 
 from .config import JavusConfig
 from .model import JavusLanguageModel
+from .bpe_tokenizer import ByteBPETokenizer
 from .tokenizer import ByteTokenizer, CharTokenizer
 
 CHECKPOINT_DIR = Path(__file__).resolve().parents[1] / "checkpoints"
 CHECKPOINT = CHECKPOINT_DIR / "javus-alpha.pt"
 LEGACY_CHECKPOINT = CHECKPOINT_DIR / "javus-small.pt"
-MODEL_NAME = "Javus Alpha"
+MODEL_NAME = "Javus Alpha 2"
 
 
 def clean_reply(reply: str) -> str:
@@ -33,10 +34,14 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
     config = JavusConfig(**checkpoint["config"])
-    tokenizer = (
-        CharTokenizer.from_state(checkpoint["tokenizer"])
-        if "tokenizer" in checkpoint else ByteTokenizer()
-    )
+    model_name = checkpoint.get("model_name", "Javus Alpha")
+    state = checkpoint.get("tokenizer")
+    if isinstance(state, dict) and state.get("type") == "byte_bpe":
+        tokenizer = ByteBPETokenizer.from_state(state)
+    elif state is not None:
+        tokenizer = CharTokenizer.from_state(state)
+    else:
+        tokenizer = ByteTokenizer()
     model = JavusLanguageModel(config).to(device)
     model.load_state_dict(checkpoint["model"])
     model.eval()
@@ -49,7 +54,7 @@ def main():
         top_k=args.top_k,
     )
     reply_tokens = output[0, prompt.shape[1]:].tolist()
-    print(f"[{MODEL_NAME}]")
+    print(f"[{model_name}]")
     print(clean_reply(tokenizer.decode(reply_tokens)))
 
 
