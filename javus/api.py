@@ -52,12 +52,13 @@ def obtain_checkpoint() -> Path:
 
 
 def load_model() -> None:
-    global MODEL, TOKENIZER
+    global MODEL, TOKENIZER, MODEL_NAME
     path = obtain_checkpoint()
     payload = torch.load(path, map_location=DEVICE, weights_only=True)
     if not isinstance(payload, dict) or "config" not in payload or "model" not in payload:
         raise RuntimeError("Checkpoint formati Javus Alpha uchun mos emas.")
     config = JavusConfig(**payload["config"])
+    MODEL_NAME = payload.get("model_name", "Javus Alpha")
     state = payload.get("tokenizer")
     if isinstance(state, dict) and state.get("type") == "byte_bpe":
         TOKENIZER = ByteBPETokenizer.from_state(state)
