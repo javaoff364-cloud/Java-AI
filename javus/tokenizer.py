@@ -20,10 +20,7 @@ class CharTokenizer:
             "abcdefghijklmnopqrstuvwxyz"
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
             "0123456789"
-            " oʻғҳқʼʻ‘’-_.,!?;:()[]{}<>/@#$%&*+=\\\n\r\t"
-            "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
-            "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
-            "ЎўҒғҲҳҚқ"
+            " '’‘-_.,!?;:()[]{}<>/@#$%&*+=\\\n\r\t"
         )
         chars = sorted(set(text) | set(common))
         return cls(itos=["<unk>", *chars])
