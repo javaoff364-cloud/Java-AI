@@ -1,21 +1,19 @@
 # Javus AI
 
-**Javus AI** — o'z arxitekturasi, o'zbekcha datasetlari va o'zida o'qitiladigan neyron tarmog'iga ega mustaqil loyiha.
+**Javus AI** is an independent Python/PyTorch neural-network research project. Its first model, **Javus Alpha**, is a small experimental text-only Transformer — not yet a production-ready assistant.
 
-Birinchi modelimiz: **Javus Alpha**. Hozirgi holati — kichik, faqat matn bilan ishlaydigan eksperimental Transformer prototipi. Bu hali tayyor yoki kuchli chatbot emas.
+## Current stack
 
-## Texnologiyalar
-- Python 3.10+ va PyTorch
-- Unicode belgilariga asoslangan tokenizer (o'zbek lotin/kirill matni uchun)
-- Decoder-only Transformer, causal self-attention
-- AdamW, cross-entropy, gradient clipping
-- Smart Training, validation loss monitoring va adaptive learning rate
-- Top-k sampling orqali matn generatsiyasi
-- pytest va GitHub Actions
+- Python 3.10+ and PyTorch
+- Decoder-only Transformer with causal self-attention
+- Unicode character tokenizer with a checkpointed vocabulary
+- Multilingual starter corpus: English, Uzbek (Latin and Cyrillic), Russian, Turkish, Arabic, Chinese, and Japanese
+- AdamW, cross-entropy, gradient clipping, validation monitoring, and adaptive learning rate
+- Resumable checkpoints, JSONL metrics, pytest, and GitHub Actions
 
-## O'rnatish
+## Install in Termux
 
-Termux ichida Ubuntu proot muhitidan foydalanish tavsiya etiladi:
+A Linux environment through Ubuntu proot is recommended for PyTorch compatibility:
 
 ```bash
 pkg update && pkg upgrade -y
@@ -24,7 +22,7 @@ proot-distro install ubuntu
 proot-distro login ubuntu
 ```
 
-Ubuntu ichida:
+Inside Ubuntu:
 
 ```bash
 apt update
@@ -37,105 +35,107 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## Dataset
+## Dataset and language support
 
-`data/train.txt` — Javus uchun mualliflik bilan yozilgan boshlang'ich o'zbekcha suhbat korpusi. Treningda validation ajratish butun suhbat-paragraf chegaralarida amalga oshiriladi. Unda foydalanuvchi savollari va Javus javoblari bir xil formatda berilgan. Korpus hali kichik; sifatli model uchun mavzular, uslublar va misollar sonini sezilarli oshirish, matnlarni tekshirish va litsenziyasi aniq ma'lumotlardan foydalanish kerak.
+`data/train.txt` contains manually authored starter examples in English, Uzbek Latin/Cyrillic, Russian, Turkish, Arabic, Chinese, and Japanese. The corpus is UTF-8 and includes non-Latin scripts and emoji.
 
-Yangi ma'lumot qo'shganda:
-- takroriy va bir-biriga zid misollarni kamaytiring;
-- imlo va faktlarni tekshiring;
-- maxfiy yoki shaxsiy ma'lumotlarni kiritmang;
-- ma'lumot manbasi va litsenziyasini qayd qiling;
-- trening va baholash ma'lumotlarini alohida saqlang.
+The tokenizer maps Unicode code points to IDs and stores its exact vocabulary in each checkpoint. It can round-trip characters present in its vocabulary. A character absent from the vocabulary maps to `<unk>`; add new scripts/symbols to the corpus and retrain with a compatible vocabulary before expecting the model to generate them.
 
-## Testlar
+This is a small seed corpus for testing the training pipeline, not a large language dataset. It does not make Javus fluent in all listed languages. A useful assistant requires a much larger, reviewed, balanced, and legally usable corpus, plus a separate benchmark and human evaluation.
+
+When adding data:
+- keep each conversation example complete and separate by a blank line;
+- check spelling, facts, duplicates, and language balance;
+- do not include private or sensitive information;
+- record data sources and licenses;
+- keep validation/test examples separate from training examples.
+
+## Tests
 
 ```bash
 python -m pytest -q
 ```
 
-## Javus treningi
+## Train Javus Alpha
 
-Bir martalik 100 qadam:
+Run one bounded session (100 optimizer steps by default):
 
 ```bash
-python -m javus.train --steps 100
+python -m javus.train --steps 100 --batch-size 8
 ```
 
-Har 100 qadamdan keyin checkpoint saqlab, uzluksiz davom etish:
+The run saves a checkpoint after the batch. A later run resumes from that checkpoint. To explicitly continue repeated batches until stopped manually:
 
 ```bash
 python -m javus.train --steps 100 --batch-size 8 --forever
 ```
 
-Mavjud checkpointni chetlab, noldan boshlash uchun `--fresh` qo'shing. Asosiy checkpoint `checkpoints/javus-alpha.pt`, eng yaxshi validation natijali nusxa `checkpoints/javus-alpha-best.pt` da saqlanadi. Eski `javus-small.pt` checkpointi avtomatik o'qilib, yangi nom bilan davom ettiriladi. Smart Training natijalari `checkpoints/javus-alpha-metrics.jsonl` ga yoziladi.
+To intentionally ignore existing model state and start from scratch:
 
-## Smart Training nimalar qiladi?
-1. Har bir batch yakunida modelni baholaydi.
-2. Trening va validation loss ko'rsatkichlarini qayd etadi.
-3. Validation loss yaxshilanmay qolsa, uchta baholashdan keyin learning rate'ni 50% kamaytiradi.
-4. Model, optimizer, global step va Smart Training holatini checkpoint'ga saqlaydi.
-5. Keyingi ishga tushishda oldingi holatdan davom etadi.
-6. Validation hisobini kichik batchlarda bajarib, katta datasetda ortiqcha xotira sarfini kamaytiradi.
+```bash
+python -m javus.train --steps 100 --fresh
+```
 
-Validation uchun datasetning 25% qismi ajratiladi. Hozirgi korpus kichik bo'lgani sababli metrikalar pipeline sinovi hisoblanadi; model sifatini baholash uchun alohida va kattaroq test to'plami kerak.
+Files created locally:
+- `checkpoints/javus-alpha.pt` — latest model, optimizer, tokenizer, step, and RNG state;
+- `checkpoints/javus-alpha-best.pt` — best validation checkpoint;
+- `checkpoints/javus-alpha-metrics.jsonl` — per-run metrics;
+- `checkpoints/javus-alpha-pre-multilingual.pt` — preserved previous checkpoint if a new vocabulary is required.
 
-## Matn generatsiyasi
+When a new dataset contains characters missing from an older checkpoint vocabulary, the trainer preserves the old checkpoint and starts a compatible Unicode model. This avoids corrupting embedding dimensions or silently training new characters as unknown tokens.
+
+## Training behavior
+
+1. The trainer splits complete conversation paragraphs into 90% training and 10% validation data.
+2. It performs the requested maximum number of optimizer steps per run.
+3. It evaluates train and validation loss and adjusts learning rate when validation stops improving.
+4. It saves model weights, optimizer state, tokenizer vocabulary, global step, and random states.
+5. The next run resumes from the latest checkpoint when the vocabulary is compatible.
+6. Ctrl+C requests a safe checkpoint save.
+
+## GitHub Actions
+
+The training workflow is deliberately **bounded**. It no longer runs an infinite loop inside one GitHub Actions job. It runs a finite number of steps (100 by default; manual choices include 250, 500, or 1000), saves a checkpoint, uploads training artifacts for 30 days, and can resume from the Actions cache on a later scheduled or manual run. The workflow is scheduled every six hours.
+
+GitHub-hosted runners are temporary and have execution limits. For long-term training, regularly download and back up the checkpoint artifacts.
+
+## Generate text
 
 ```bash
 python -m javus.generate --prompt "Assalomu alaykum" --max-new-tokens 40
 ```
 
-Generatsiyada temperature va top-k sampling ishlatiladi. Unicode character tokenizer har bir Unicode belgini bitta token qiladi va lug'at checkpoint ichida saqlanadi. Eski byte-tokenizer checkpointidan yangi tokenizerga o'tishda `python -m javus.train --fresh` bilan yangi trening boshlash kerak. Bu juda kam ehtimolli tokenlarni cheklaydi, lekin kichik dataset yoki kam trening muammosini o'zi hal qilmaydi.
+## HTTP API
 
-## GitHub Actions
-Training workflow har 6 soatda rejalashtirilgan va qo'lda ham ishga tushirilishi mumkin. GitHub-hosted runner doimiy server emas: har bir ishga tushish vaqt limiti bilan cheklangan. Checkpoint Actions cache orqali keyingi ishga tushishga uzatiladi, asosiy va eng yaxshi checkpoint hamda metrikalar artifact sifatida 14 kun saqlanadi.
-
-## Online API (Javus Alpha)
-
-API serveri FastAPI va PyTorch asosida ishlaydi. Model server ishga tushganda `.pt` checkpointni xotiraga yuklaydi.
-
-### Lokal ishga tushirish
+Run the FastAPI server after a checkpoint exists:
 
 ```bash
-pip install -r requirements.txt
 export JAVUS_CHECKPOINT_PATH=checkpoints/javus-alpha.pt
 uvicorn javus.api:app --host 0.0.0.0 --port 8000
 ```
 
-### Endpointlar
-- `GET /` — API haqida ma'lumot
-- `GET /health` — server va model holati
-- `POST /chat` — Javus bilan matnli suhbat
-- `GET /docs` — interaktiv API hujjatlari
+Endpoints:
+- `GET /` — API information
+- `GET /health` — model status
+- `POST /chat` — text generation
+- `GET /docs` — interactive API documentation
 
-So'rov namunasi:
+Set `JAVUS_API_KEY` to protect `POST /chat`. Never commit API keys or private checkpoint URLs.
 
-```json
-{
-  "message": "Assalomu alaykum",
-  "max_new_tokens": 80,
-  "temperature": 0.8,
-  "top_k": 40
-}
-```
+## Roadmap
 
-Agar `JAVUS_API_KEY` o'rnatilgan bo'lsa, `POST /chat` so'roviga `X-API-Key` headerini qo'shish shart. Serverda checkpoint bo'lishi uchun `JAVUS_CHECKPOINT_PATH` yoki yuklab olish mumkin bo'lgan `JAVUS_CHECKPOINT_URL` belgilanadi. Maxfiy checkpoint URL'ni ommaviy repoga yozmang.
-
-## Keyingi bosqichlar
-- [x] Python Transformer prototipi
-- [x] Dastlabki core testlar
-- [x] Javus Alpha nomi va Smart Training
-- [x] Suhbat formatidagi o'zbekcha boshlang'ich korpus
-- [x] Top-k sampling va xotirasi cheklangan validation
-- [ ] Keng, toza va litsenziyasi tekshirilgan o'zbekcha dataset
-- [ ] Alohida benchmark va sifatli test to'plami
-- [x] O'zbek matni uchun Unicode character tokenizer
-- [x] Tokenizer lug'atini checkpoint ichida saqlash
-- [x] Eski byte-tokenizer checkpointlari bilan API mosligi
-- [ ] Tokenizer va arxitekturani keyingi takomillashtirish
-- [ ] Vision va audio modullari
+- [x] Python Transformer prototype
+- [x] Unicode character tokenizer
+- [x] Multilingual starter corpus
+- [x] Checkpoint and resume support
+- [x] Bounded GitHub Actions training
+- [x] Core and dataset tests
+- [ ] Larger balanced and licensed multilingual corpus
+- [ ] Separate evaluation benchmark
+- [ ] Improve tokenizer and model architecture
+- [ ] Vision and audio research modules
 - [ ] Javus AI 1.0
 
-## Litsenziya
+## License
+
 Apache-2.0
