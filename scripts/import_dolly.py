@@ -5,7 +5,7 @@ Keeps the existing authored seed examples and fills to TARGET using filtered Dol
 instruction/response pairs. Uses only Python standard library + dataset-viewer API.
 """
 from __future__ import annotations
-import json, re, urllib.request
+import json, re, time, urllib.request, urllib.error
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,14 +19,29 @@ ENGLISH = re.compile(r"^[\x00-\x7F\u00A0-\u024F]+$")
 
 def fetch_rows():
     rows = []
-    for offset in range(0, 15000, 100):
+    for offset in range(0, 5000, 100):
         url = f"{API}?dataset={DATASET}&config=default&split=train&offset={offset}&length=100"
         req = urllib.request.Request(url, headers={"User-Agent": "Javus-Dataset-Builder/1.0"})
-        with urllib.request.urlopen(req, timeout=45) as response:
-            payload = json.load(response)
-        rows.extend(item["row"] for item in payload.get("rows", []))
-        if len(payload.get("rows", [])) < 100:
+        payload = None
+        for attempt in range(6):
+            try:
+                with urllib.request.urlopen(req, timeout=45) as response:
+                    payload = json.load(response)
+                break
+            except urllib.error.HTTPError as exc:
+                if exc.code != 429 and exc.code < 500:
+                    raise
+                time.sleep(min(30, 2 ** attempt))
+            except (urllib.error.URLError, TimeoutError):
+                time.sleep(min(30, 2 ** attempt))
+        if payload is None:
+            raise RuntimeError(f"HF dataset API still unavailable at offset {offset} after retries")
+        batch = payload.get("rows", [])
+        rows.extend(item["row"] for item in batch)
+        # Limit requests: only fetch enough rows to fill the corpus.
+        if len(rows) >= 1500 or len(batch) < 100:
             break
+        time.sleep(1.25)
     return rows
 
 def clean(value):
