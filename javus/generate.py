@@ -7,16 +7,16 @@ from .config import JavusConfig
 from .model import JavusLanguageModel
 from .tokenizer import ByteTokenizer
 
-CHECKPOINT = Path(__file__).resolve().parents[1] / "checkpoints" / "javus-small.pt"
+CHECKPOINT = Path(__file__).resolve().parents[1] / "checkpoints" / "javus-alpha.pt"
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate text with Javus")
+    parser = argparse.ArgumentParser(description="Generate text with Javus Alpha")
     parser.add_argument("--prompt", default="Assalomu alaykum")
     parser.add_argument("--max-new-tokens", type=int, default=80)
     args = parser.parse_args()
     if not CHECKPOINT.exists():
-        raise SystemExit("Model topilmadi. Avval python -m javus.train buyrug'ini bajaring.")
+        raise SystemExit("Javus Alpha modeli topilmadi. Avval python -m javus.train buyrug'ini bajaring.")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     checkpoint = torch.load(CHECKPOINT, map_location=device, weights_only=True)
     config = JavusConfig(**checkpoint["config"])
