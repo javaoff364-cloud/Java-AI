@@ -32,12 +32,14 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Restore previous training checkpoint
+      - name: Restore previous training checkpoint and metrics
         uses: actions/cache/restore@v4
         with:
           path: |
-            checkpoints/javus-small.pt
+            checkpoints/javus-alpha.pt
+            checkpoints/javus-alpha-best.pt
             checkpoints/javus-alpha-metrics.jsonl
+            checkpoints/javus-small.pt
           key: javus-alpha-checkpoint-${{ github.run_id }}
           restore-keys: |
             javus-alpha-checkpoint-
@@ -53,27 +55,30 @@ jobs:
           python -m javus.train --steps 100 --batch-size 8 --forever 2>&1 | tee -a training.log
 
       - name: Save checkpoint for the next run
-        if: always() && hashFiles('checkpoints/javus-small.pt') != ''
+        if: always() && hashFiles('checkpoints/javus-alpha.pt') != ''
         uses: actions/cache/save@v4
         with:
           path: |
-            checkpoints/javus-small.pt
+            checkpoints/javus-alpha.pt
+            checkpoints/javus-alpha-best.pt
             checkpoints/javus-alpha-metrics.jsonl
+            checkpoints/javus-small.pt
           key: javus-alpha-checkpoint-${{ github.run_id }}
 
       - name: Verify latest checkpoint
         if: always()
         run: |
-          test -s checkpoints/javus-small.pt
-          ls -lh checkpoints/javus-small.pt
+          test -s checkpoints/javus-alpha.pt
+          ls -lh checkpoints/javus-alpha.pt
 
-      - name: Upload model checkpoint, metrics and log
+      - name: Upload Javus Alpha checkpoints, metrics and log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: javus-alpha-training
           path: |
-            checkpoints/javus-small.pt
+            checkpoints/javus-alpha.pt
+            checkpoints/javus-alpha-best.pt
             checkpoints/javus-alpha-metrics.jsonl
             training.log
           if-no-files-found: error
