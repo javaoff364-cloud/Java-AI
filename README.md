@@ -1,6 +1,6 @@
 # Javus AI
 
-**Javus AI** is an independent Python/PyTorch neural-network research project. **Javus Alpha 2** is a from-scratch, decoder-only Transformer experiment intended to grow into an English conversational assistant. It does not load pretrained model weights or call an external LLM.
+**Javus AI** is an independent Python/PyTorch neural-network research project. **Javus Alpha 2** is a from-scratch, decoder-only Transformer experiment intended to grow into a bilingual Uzbek + English conversational assistant. It does not load pretrained model weights or call an external LLM.
 
 ## Alpha 2 foundation
 
@@ -8,12 +8,12 @@
 - Decoder-only Transformer with causal self-attention and pre-normalized residual blocks
 - GPT-style parameter initialization and tied input/output embeddings
 - Deterministic byte-level BPE tokenizer learned from the current corpus
-- UTF-8 byte fallback, so unseen Unicode text can be encoded without an unknown-character token
-- English-only seed corpus for this development phase
+- UTF-8 byte fallback, including Uzbek apostrophes and other Unicode characters
+- English + Uzbek instruction data from Hugging Face Aya Collection
 - AdamW, cross-entropy, gradient clipping, validation monitoring, adaptive learning rate
 - Resumable checkpoints, JSONL metrics, pytest, and bounded GitHub Actions training
 
-**Important:** the current corpus is only a small starter set. A better tokenizer and architecture do not create language knowledge by themselves. Javus will not become a useful assistant until we add a large, carefully reviewed training corpus and evaluate it on questions it has never seen.
+**Important:** the current 1,000-example corpus is only a pipeline smoke-test dataset, not enough to create a capable assistant. A useful model needs much larger, carefully reviewed, diverse data and held-out evaluation. A low training loss alone does not prove answer quality.
 
 ## Install in Termux
 
@@ -36,19 +36,35 @@ cd Java-AI
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+pip install -e ".[data,test]"
 ```
 
-## Dataset
+## Hugging Face dataset
 
-`data/train.txt` is intended to contain 1,000 English conversation examples (the existing authored seed plus filtered Dolly 15k examples). Run `python scripts/import_dolly.py` to rebuild it reproducibly; the GitHub Actions **Import Dolly training data** workflow can run this on the dataset branch. The importer filters empty, duplicate, overly long, non-English, and URL-containing examples. Dolly is licensed CC BY-SA 3.0, so retain attribution and license details. Source: https://huggingface.co/datasets/databricks/databricks-dolly-15k. Each conversation is separated by a blank line:
+The importer uses **CohereLabs/aya_collection_language_split**, streaming the `english` and `uzbek` subsets rather than downloading the entire multilingual collection. The dataset provides instruction/response pairs and is published under Apache-2.0. The importer:
+- retains the hand-written starter examples,
+- filters empty, duplicate, overly long, URL-containing, and invalid-Unicode rows,
+- takes equal numbers from English and Uzbek for the remaining slots,
+- shuffles records deterministically,
+- writes UTF-8 atomically and refuses to save a partial corpus.
+
+Run:
+
+```bash
+python scripts/import_dolly.py --target 1000
+```
+
+Source: https://huggingface.co/datasets/CohereLabs/aya_collection_language_split  
+License: Apache-2.0. Keep the source attribution and license information when redistributing data. Review examples for quality and suitability before using them in a release.
+
+The conversation format is:
 
 ```text
-User: Why is the sky blue?
-Javus: Air molecules scatter shorter blue wavelengths of sunlight more than longer red wavelengths.
+User: O‘zbekiston haqida gapirib ber.
+Javus: O‘zbekiston Markaziy Osiyoda joylashgan.
 ```
 
-Keep examples accurate, natural, diverse, and free of private information. Track source and license information when adding external data. Keep evaluation questions separate from training data to avoid testing memorization.
+Keep evaluation questions separate from training data to avoid testing memorization.
 
 ## Tests
 
@@ -61,7 +77,7 @@ python -m pytest -q
 Run one bounded session (100 optimizer steps by default):
 
 ```bash
-python -m javus.train --steps 500 --batch-size 8
+python -m javus.train --steps 100 --batch-size 8
 ```
 
 The first Alpha 2 run detects an older tokenizer checkpoint, preserves it, and initializes a byte-BPE model. A checkpoint is resumed only when both the corpus SHA-256 and BPE vocabulary match exactly; changed training data starts a fresh run while archiving the previous checkpoint. Train/validation splitting shuffles complete conversation records with a fixed seed, preventing source-order bias and keeping each answer paired with its prompt.
@@ -72,13 +88,7 @@ To intentionally start the Alpha 2 model from scratch:
 python -m javus.train --steps 100 --batch-size 8 --fresh
 ```
 
-To change the number of BPE merge rules on a fresh model:
-
-```bash
-python -m javus.train --steps 100 --bpe-merges 128 --fresh
-```
-
-Training is bounded by default. The optional `--forever` flag is for deliberate local experiments only; it should not be used in GitHub Actions.
+Training is bounded by default. The optional `--forever` flag is for deliberate local experiments only; it must not be used in GitHub Actions.
 
 ## Checkpoints and metrics
 
@@ -90,7 +100,7 @@ Training is bounded by default. The optional `--forever` flag is for deliberate 
 ## Generate text
 
 ```bash
-python -m javus.generate --prompt "Hello, how are you?" --max-new-tokens 40
+python -m javus.generate --prompt "Salom, qalaysan?" --max-new-tokens 40
 ```
 
 ## HTTP API
@@ -102,28 +112,22 @@ export JAVUS_CHECKPOINT_PATH=checkpoints/javus-alpha.pt
 uvicorn javus.api:app --host 0.0.0.0 --port 8000
 ```
 
-Endpoints:
-- `GET /` — API information
-- `GET /health` — model status and tokenizer type
-- `POST /chat` — text generation
-- `GET /docs` — interactive API documentation
-
-Set `JAVUS_API_KEY` to protect `POST /chat`. Never commit API keys or private checkpoint URLs.
+Endpoints: `GET /`, `GET /health`, `POST /chat`, and `GET /docs`. Set `JAVUS_API_KEY` to protect `POST /chat`. Never commit API keys or private checkpoint URLs.
 
 ## GitHub Actions
 
-The training workflow is manual-only and bounded (500 optimizer steps by default; choose 100, 250, 500, or 1000). It runs tests first, saves a resumable checkpoint, and uploads checkpoints, metrics, and logs as artifacts for 30 days. It does not start recurring training automatically. A separate CI workflow runs tests on pushes and pull requests.
+The training workflow is manual-only and bounded. It runs tests first, trains for one selected step budget, saves a resumable checkpoint, and uploads checkpoints, metrics, and logs as artifacts for 30 days. It does not start recurring training automatically. A separate CI workflow runs tests on pushes and pull requests.
 
 ## Roadmap
 
 - [x] Python Transformer prototype
 - [x] Byte-level BPE tokenizer foundation
-- [x] English-only starter corpus
 - [x] Checkpoint and resume support
-- [x] Bounded training workflow
+- [x] Bounded GitHub Actions training
 - [x] Core, dataset, and tokenizer tests
-- [ ] Expand the English corpus substantially with reviewed/licensed data
-- [ ] Build a held-out assistant evaluation benchmark
+- [x] Hugging Face English + Uzbek data importer
+- [ ] Expand the bilingual corpus substantially with reviewed/licensed data
+- [ ] Build a held-out bilingual assistant evaluation benchmark
 - [ ] Improve conversation formatting and generation quality
 - [ ] Train and evaluate larger model sizes
 - [ ] Research vision and audio after text quality is established
