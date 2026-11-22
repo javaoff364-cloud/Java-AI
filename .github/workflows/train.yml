@@ -1,4 +1,4 @@
-name: Javus Alpha Bounded Training
+name: Javus Alpha 2 Bounded Training
 
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: javus-alpha-training
+  group: javus-alpha-2-training
   cancel-in-progress: false
 
 jobs:
@@ -52,6 +52,7 @@ jobs:
             checkpoints/javus-alpha-metrics.jsonl
             checkpoints/javus-small.pt
             checkpoints/javus-alpha-pre-multilingual.pt
+            checkpoints/javus-alpha-pre-alpha2.pt
           key: javus-alpha-checkpoint-${{ github.run_id }}
           restore-keys: |
             javus-alpha-checkpoint-
