@@ -51,6 +51,7 @@ jobs:
             checkpoints/javus-alpha-best.pt
             checkpoints/javus-alpha-metrics.jsonl
             checkpoints/javus-small.pt
+            checkpoints/javus-alpha-pre-multilingual.pt
           key: javus-alpha-checkpoint-${{ github.run_id }}
           restore-keys: |
             javus-alpha-checkpoint-
@@ -76,6 +77,7 @@ jobs:
             checkpoints/javus-alpha-best.pt
             checkpoints/javus-alpha-metrics.jsonl
             checkpoints/javus-small.pt
+            checkpoints/javus-alpha-pre-multilingual.pt
           key: javus-alpha-checkpoint-${{ github.run_id }}
 
       - name: Upload Javus checkpoints, metrics and log
