@@ -2,7 +2,7 @@
 
 **Javus AI** — o'z arxitekturasi, o'zbekcha datasetlari va o'zida o'qitilgan neyron tarmog'iga ega mustaqil multimodal sun'iy intellekt yaratish loyihasi.
 
-Hozirgi bosqich: **Javus Core 0.1.0 — text-only prototip**.
+Hozirgi bosqich: **Javus Alpha 0.1.0 — ilk text-only model**.
 
 > Bu loyiha tayyor generativ AI API'siga ulanmaydi. Decoder-only Transformer arxitekturasi PyTorch yordamida loyihaning o'zida yozilgan. Dastlabki model kichik tajriba uchun; u hali bilimli yoki ishonchli chatbot emas.
 
@@ -49,7 +49,12 @@ python -m pytest -q
 ```bash
 python -m javus.train --steps 100
 ```
-Dastlab 100 qadam bilan sinab ko'ring. Keyin qurilma xotirasi va tezligiga qarab 300–500 qadamga oshirish mumkin. Checkpoint: `checkpoints/javus-small.pt`.
+Dastlab 100 qadam bilan sinab ko'ring. Smart Training har partiyadan keyin train va validation loss'ni hisoblaydi, validation natijasi yomonlashganda learning rate'ni avtomatik pasaytiradi. Eng yaxshi checkpoint `checkpoints/javus-alpha-best.pt`, oxirgi checkpoint esa `checkpoints/javus-alpha.pt` faylida saqlanadi.
+
+Uzluksiz Smart Training:
+```bash
+python -m javus.train --steps 100 --batch-size 8 --forever
+```
 
 ## Matn generatsiyasi
 ```bash
@@ -67,10 +72,11 @@ python -m javus.generate --prompt "Assalomu alaykum" --max-new-tokens 40
 `data/train.txt` hozircha kichik, qo'lda yozilgan sinov korpusi. U faqat pipeline ishlashini tekshirishga xizmat qiladi; undan mazmunli chatbot kutib bo'lmaydi. Kengaytiriladigan korpus litsenziyasi mos, kelib chiqishi qayd etilgan, maxfiy bo'lmagan va sifat nazoratidan o'tgan o'zbekcha matnlardan tuziladi.
 
 ## Rivojlanish rejasi
-- [x] Python asosidagi Javus Core mavjud
+- [x] Python asosidagi Javus Alpha mavjud
 - [x] Core uchun dastlabki avtomatik testlar
 - [ ] Termux qurilmasida PyTorch muhitini tasdiqlash
-- [ ] Birinchi modelni o'qitish va checkpointni tekshirish
+- [ ] Javus Alpha modelini to'liq o'qitish va checkpointni tekshirish
+- [x] Smart Training: validation, adaptive learning rate va best checkpoint
 - [ ] O'zbekcha datasetni sifatli kengaytirish
 - [ ] Tokenizer va trening pipeline'ni takomillashtirish
 - [ ] Vision va audio encoderlar bilan multimodal arxitektura
