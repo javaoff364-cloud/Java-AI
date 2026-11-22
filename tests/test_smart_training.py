@@ -30,3 +30,15 @@ def test_validation_evaluation_handles_short_validation_split():
     assert scores["train"] is not None
     assert scores["validation"] is not None
     assert torch.isfinite(torch.tensor(scores["validation"]))
+
+
+def test_validation_evaluation_processes_data_in_batches():
+    config = JavusConfig(block_size=8, n_embd=16, n_head=2, n_layer=1, dropout=0.0)
+    model = JavusLanguageModel(config)
+    train_data = torch.randint(0, 256, (32,))
+    validation_data = torch.randint(0, 256, (17,))
+    scores = evaluate(
+        model, train_data, validation_data, block_size=8, batch_size=4, batches=2
+    )
+    assert scores["validation"] is not None
+    assert torch.isfinite(torch.tensor(scores["validation"]))
