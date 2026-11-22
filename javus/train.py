@@ -61,7 +61,7 @@ def main():
     if len(data) < 40:
         raise SystemExit("Dataset juda kichik. data/train.txt fayliga ko'proq matn kiriting.")
 
-    split = max(1, min(len(data) - 1, int(len(data) * 0.9)))
+    split = max(1, min(len(data) - 1, int(len(data) * 0.75)))
     train_data, val_data = data[:split], data[split:]
     checkpoint = None
     source_checkpoint = CHECKPOINT if CHECKPOINT.is_file() else LEGACY_CHECKPOINT
