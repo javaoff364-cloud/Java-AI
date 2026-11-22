@@ -1,4 +1,6 @@
+"""Bounded, resumable training for Javus Alpha."""
 import argparse
+import hashlib
 import json
 import random
 import shutil
@@ -22,22 +24,15 @@ MODEL_NAME = "Javus Alpha"
 
 
 def split_corpus(text: str, tokenizer: CharTokenizer):
-    """Split on complete paragraph boundaries, never in the middle of a pair."""
+    """Split complete conversation records, keeping each pair intact."""
     records = [
         item.strip()
         for item in text.split("\n\n")
         if item.strip() and not item.lstrip().startswith("#")
     ]
     if len(records) < 4:
-        encoded = tokenizer.encode(text)
-        split = max(1, min(len(encoded) - 1, int(len(encoded) * 0.75)))
-        return (
-            torch.tensor(encoded[:split], dtype=torch.long),
-            torch.tensor(encoded[split:], dtype=torch.long),
-            len(records),
-        )
-
-    split = max(1, min(len(records) - 1, int(len(records) * 0.75)))
+        raise ValueError("Dataset kamida 4 ta to'liq suhbat yozuvidan iborat bo'lishi kerak.")
+    split = max(1, min(len(records) - 1, int(len(records) * 0.9)))
     train_text = "\n\n".join(records[:split]) + "\n\n"
     val_text = "\n\n".join(records[split:])
     return (
@@ -47,9 +42,11 @@ def split_corpus(text: str, tokenizer: CharTokenizer):
     )
 
 
-def save_checkpoint(model, optimizer, config, tokenizer, global_step, device, smart_state):
-    CHECKPOINT.parent.mkdir(parents=True, exist_ok=True)
+def save_checkpoint(model, optimizer, config, tokenizer, global_step, device,
+                    smart_state, corpus_sha256):
+    CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
     payload = {
+        "format_version": 2,
         "model_name": MODEL_NAME,
         "config": config.to_dict(),
         "tokenizer": tokenizer.to_dict(),
@@ -57,6 +54,7 @@ def save_checkpoint(model, optimizer, config, tokenizer, global_step, device, sm
         "optimizer": optimizer.state_dict(),
         "smart_training": smart_state.to_dict(),
         "step": global_step,
+        "corpus_sha256": corpus_sha256,
         "torch_rng_state": torch.get_rng_state(),
         "python_rng_state": random.getstate(),
     }
@@ -68,42 +66,60 @@ def save_checkpoint(model, optimizer, config, tokenizer, global_step, device, sm
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Train Javus Alpha with Smart Training")
-    parser.add_argument("--steps", type=int, default=100, help="Har bir training partiyasidagi qadamlar")
+    parser = argparse.ArgumentParser(description="Train Javus Alpha with resumable checkpoints")
+    parser.add_argument("--steps", type=int, default=100,
+                        help="Maximum optimizer steps in this run (default: 100)")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--forever", action="store_true", help="Har partiyadan keyin saqlab, davom etish")
-    parser.add_argument("--fresh", action="store_true", help="Checkpointni e'tiborsiz qoldirib, noldan boshlash")
+    parser.add_argument("--forever", action="store_true",
+                        help="Explicitly continue batches until manually stopped")
+    parser.add_argument("--fresh", action="store_true",
+                        help="Ignore existing checkpoints and create a new tokenizer/model")
     args = parser.parse_args()
     if args.steps < 1 or args.batch_size < 1:
-        parser.error("steps va batch-size kamida 1 bo'lishi kerak")
+        parser.error("--steps and --batch-size must be positive")
+    if args.steps > 10000:
+        parser.error("--steps cannot exceed 10000 in one run")
 
     random.seed(args.seed)
     torch.manual_seed(args.seed)
+    torch.set_num_threads(max(1, min(4, torch.get_num_threads())))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     text = DATA_PATH.read_text(encoding="utf-8")
-    tokenizer = CharTokenizer.from_text(text)
-    train_data, val_data, record_count = split_corpus(text, tokenizer)
-    if len(train_data) < 40:
-        raise SystemExit("Dataset juda kichik. data/train.txt fayliga ko'proq matn kiriting.")
+    corpus_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
 
-    checkpoint = None
     source_checkpoint = CHECKPOINT if CHECKPOINT.is_file() else LEGACY_CHECKPOINT
+    checkpoint = None
     if source_checkpoint.is_file() and not args.fresh:
         checkpoint = torch.load(source_checkpoint, map_location="cpu", weights_only=False)
         if "tokenizer" not in checkpoint:
             raise SystemExit(
-                "Eski byte-tokenizer checkpointi topildi. Unicode tokenizerga o'tish uchun "
-                "--fresh bilan yangi Javus Alpha treningini boshlang."
+                "Legacy byte-tokenizer checkpoint detected. Start a new Unicode model with --fresh."
             )
         tokenizer = CharTokenizer.from_state(checkpoint["tokenizer"])
-        print(f"{MODEL_NAME}: {checkpoint.get('step', 0)} qadamdan davom etiladi.")
+        known_chars = set(tokenizer.itos)
+        missing_chars = sorted(set(text) - known_chars)
+        if missing_chars:
+            preview = "".join(missing_chars[:20])
+            raise SystemExit(
+                "Dataset vocabulary changed since this checkpoint. To avoid silently mapping "
+                f"new characters to <unk> (examples: {preview!r}), run once with --fresh."
+            )
+        if checkpoint.get("corpus_sha256") not in (None, corpus_sha256):
+            print("Dataset changed; keeping compatible tokenizer and resuming weights.", flush=True)
+        print(f"{MODEL_NAME}: resuming from step {checkpoint.get('step', 0)}.", flush=True)
+    else:
+        tokenizer = CharTokenizer.from_text(text)
+
+    train_data, val_data, record_count = split_corpus(text, tokenizer)
+    if len(train_data) < 40:
+        raise SystemExit("Dataset is too small; add more complete conversation examples.")
 
     if checkpoint is not None:
         config = JavusConfig(**checkpoint["config"])
         if config.vocab_size != tokenizer.vocab_size:
-            raise SystemExit("Checkpoint tokenizer hajmi model config bilan mos emas.")
+            raise SystemExit("Checkpoint vocabulary and model config do not match; use --fresh.")
     else:
         config = JavusConfig(vocab_size=tokenizer.vocab_size)
 
@@ -129,14 +145,15 @@ def main():
             torch.cuda.set_rng_state_all(checkpoint["cuda_rng_state"])
 
     controller = AdaptiveLearningRate(optimizer, smart_state)
-    model.train()
     batch_number = 0
     try:
         while True:
             batch_number += 1
             losses = []
+            model.train()
             for _ in range(args.steps):
-                starts = torch.randint(0, len(train_data) - config.block_size - 1, (args.batch_size,))
+                upper = len(train_data) - config.block_size
+                starts = torch.randint(0, upper, (args.batch_size,))
                 x = torch.stack([train_data[i:i + config.block_size] for i in starts]).to(device)
                 y = torch.stack([train_data[i + 1:i + config.block_size + 1] for i in starts]).to(device)
                 _, loss = model(x, y)
@@ -157,30 +174,33 @@ def main():
                 "batch_loss": sum(losses) / len(losses),
                 "train_loss": scores["train"], "validation_loss": validation_loss,
                 "learning_rate": optimizer.param_groups[0]["lr"],
-                "lr_reduced": lr_changed,
-                "dataset_records": record_count,
+                "lr_reduced": lr_changed, "dataset_records": record_count,
                 "tokenizer_vocab_size": tokenizer.vocab_size,
+                "corpus_sha256": corpus_sha256,
             }
-            METRICS.parent.mkdir(parents=True, exist_ok=True)
+            CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
             with METRICS.open("a", encoding="utf-8") as stream:
                 stream.write(json.dumps(record, ensure_ascii=False) + "\n")
 
-            save_checkpoint(model, optimizer, config, tokenizer, global_step, device, smart_state)
+            save_checkpoint(model, optimizer, config, tokenizer, global_step,
+                            device, smart_state, corpus_sha256)
             if improved:
                 shutil.copy2(CHECKPOINT, BEST_CHECKPOINT)
+
             print(
-                f"{MODEL_NAME} | batch {batch_number} | +{args.steps} qadam | "
-                f"jami {global_step} | records {record_count} | vocab {tokenizer.vocab_size} | "
-                f"train loss {scores['train']:.4f} | "
-                f"validation loss {validation_loss if validation_loss is not None else 'N/A'} | "
-                f"LR {optimizer.param_groups[0]['lr']:.6g}"
-                + (" | LR avtomatik kamaytirildi" if lr_changed else ""),
+                f"{MODEL_NAME} | batch {batch_number} | +{args.steps} steps | "
+                f"total {global_step} | records {record_count} | vocab {tokenizer.vocab_size} | "
+                f"train loss {scores['train']:.4f} | validation loss "
+                f"{validation_loss if validation_loss is not None else 'N/A'} | "
+                f"LR {optimizer.param_groups[0]['lr']:.6g}",
                 flush=True,
             )
             if not args.forever:
                 break
     except KeyboardInterrupt:
-        print("To'xtatish so'rovi olindi. Oxirgi checkpoint saqlangan.", flush=True)
+        print("Stop requested. Saving the latest safe checkpoint...", flush=True)
+        save_checkpoint(model, optimizer, config, tokenizer, global_step,
+                        device, smart_state, corpus_sha256)
 
 
 if __name__ == "__main__":
