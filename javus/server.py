@@ -10,6 +10,7 @@ from .tokenizer import ByteTokenizer
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECKPOINT = ROOT / "checkpoints" / "javus-small.pt"
+MODEL_NAME = "Javus Alpha"
 app = FastAPI(title="Javus AI API", version="0.1.0")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = None
@@ -26,7 +27,7 @@ def load_model():
     if model is not None:
         return model
     if not CHECKPOINT.exists():
-        raise HTTPException(status_code=503, detail="Javus modeli hali o'qitilmagan.")
+        raise HTTPException(status_code=503, detail=f"{MODEL_NAME} hali o'qitilmagan.")
     checkpoint = torch.load(CHECKPOINT, map_location=device, weights_only=True)
     config = JavusConfig(**checkpoint["config"])
     model = JavusLanguageModel(config).to(device)
@@ -37,7 +38,13 @@ def load_model():
 
 @app.get("/health")
 def health():
-    return {"name": "Javus AI", "version": "0.1.0", "model_loaded": model is not None, "device": str(device)}
+    return {
+        "name": "Javus AI",
+        "model": MODEL_NAME,
+        "version": "0.1.0",
+        "model_loaded": model is not None,
+        "device": str(device),
+    }
 
 
 @app.post("/chat")
@@ -53,4 +60,4 @@ def chat(request: ChatRequest):
     with torch.inference_mode():
         output = active_model.generate(tokens, request.max_new_tokens)
     generated = output[0, len(prompt):].tolist()
-    return {"reply": tokenizer.decode(generated), "model": "javus-small-0.1.0", "experimental": True}
+    return {"reply": tokenizer.decode(generated), "model": MODEL_NAME, "experimental": True}
