@@ -19,6 +19,7 @@ CHECKPOINT_DIR = ROOT / "checkpoints"
 CHECKPOINT = CHECKPOINT_DIR / "javus-alpha.pt"
 BEST_CHECKPOINT = CHECKPOINT_DIR / "javus-alpha-best.pt"
 LEGACY_CHECKPOINT = CHECKPOINT_DIR / "javus-small.pt"
+PREVIOUS_CHECKPOINT = CHECKPOINT_DIR / "javus-alpha-pre-multilingual.pt"
 METRICS = CHECKPOINT_DIR / "javus-alpha-metrics.jsonl"
 MODEL_NAME = "Javus Alpha"
 
@@ -101,14 +102,23 @@ def main():
         known_chars = set(tokenizer.itos)
         missing_chars = sorted(set(text) - known_chars)
         if missing_chars:
-            preview = "".join(missing_chars[:20])
-            raise SystemExit(
-                "Dataset vocabulary changed since this checkpoint. To avoid silently mapping "
-                f"new characters to <unk> (examples: {preview!r}), run once with --fresh."
+            # A larger vocabulary changes embedding dimensions. Preserve the old
+            # checkpoint for recovery, then start with a matching multilingual vocab.
+            CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+            if not PREVIOUS_CHECKPOINT.exists():
+                shutil.copy2(source_checkpoint, PREVIOUS_CHECKPOINT)
+            print(
+                "Dataset contains new Unicode characters; the old embedding vocabulary "
+                "cannot be resumed safely. Preserved the old checkpoint and starting a "
+                "fresh multilingual model.",
+                flush=True,
             )
-        if checkpoint.get("corpus_sha256") not in (None, corpus_sha256):
-            print("Dataset changed; keeping compatible tokenizer and resuming weights.", flush=True)
-        print(f"{MODEL_NAME}: resuming from step {checkpoint.get('step', 0)}.", flush=True)
+            checkpoint = None
+            tokenizer = CharTokenizer.from_text(text)
+        else:
+            if checkpoint.get("corpus_sha256") not in (None, corpus_sha256):
+                print("Dataset text changed; tokenizer remains compatible, resuming weights.", flush=True)
+            print(f"{MODEL_NAME}: resuming from step {checkpoint.get('step', 0)}.", flush=True)
     else:
         tokenizer = CharTokenizer.from_text(text)
 
