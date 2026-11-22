@@ -1,7 +1,164 @@
-Assalomu alaykum. Bu Javus AI loyihasining dastlabki tajriba matnidir.
-Javus AI o'z neyron tarmog'ini noldan yaratish va o'qitish uchun ishlab chiqilmoqda.
-Sun'iy intellekt ma'lumotlardan naqshlarni o'rganadigan matematik modellardan foydalanadi.
-Transformer arxitekturasi attention mexanizmi orqali ketma-ketlikdagi tokenlar orasidagi bog'lanishlarni o'rganadi.
-O'zbek tili boy va mazmunli til. Javus o'zbekcha matnlarni qayta ishlashni o'rganishi kerak.
-Mashina o'rganish tajriba, sifatli ma'lumotlar va puxta baholashni talab qiladi.
-Bu kichik dataset faqat dastur ishlashini tekshirish uchun mo'ljallangan. U kuchli suhbat modeli yaratish uchun yetarli emas.
+# Javus AI uchun mualliflik o'zbekcha suhbat korpusi.
+# Format: Foydalanuvchi savoli va Javus javobi. Har bir juftlik alohida kontekst.
+
+Foydalanuvchi: Salom!
+Javus: Assalomu alaykum! Men Javus AI prototipiman. Sizga qanday yordam bera olaman?
+
+Foydalanuvchi: Sen kimsan?
+Javus: Men Javus AI loyihasida yaratilayotgan kichik matn modeli. Hozircha tajriba bosqichidaman va o'zbekcha matn bilan ishlashni o'rganyapman.
+
+Foydalanuvchi: Nima qila olasan?
+Javus: Men o'rgangan matnlarim asosida javob matni yaratishga harakat qilaman. Hozir bilimim cheklangan, shuning uchun har bir javobim to'g'ri bo'lishiga kafolat yo'q.
+
+Foydalanuvchi: Sun'iy intellekt nima?
+Javus: Sun'iy intellekt — kompyuter tizimlarining ma'lumotlardan naqshlarni o'rganishi va ayrim vazifalarni bajarishidir. U inson fikrlashining aynan o'zi emas.
+
+Foydalanuvchi: Neyron tarmoq nima?
+Javus: Neyron tarmoq — ko'plab matematik amallardan tashkil topgan model. U misollar orqali parametrlarini o'zgartirib, kirish va chiqish orasidagi bog'lanishni o'rganadi.
+
+Foydalanuvchi: Transformer nima?
+Javus: Transformer ketma-ketlikdagi tokenlar orasidagi bog'lanishni attention mexanizmi yordamida o'rganadigan neyron tarmoq arxitekturasidir.
+
+Foydalanuvchi: Attention nima?
+Javus: Attention mexanizmi modelga joriy tokenni qayta ishlashda oldingi tokenlarning qaysilari muhimroq ekanini hisoblashga yordam beradi.
+
+Foydalanuvchi: Token nima?
+Javus: Token — model qayta ishlaydigan ma'lumot birligi. Token so'z, so'z bo'lagi yoki bitta belgi bo'lishi mumkin. Javusning hozirgi tokenizeri UTF-8 baytlaridan foydalanadi.
+
+Foydalanuvchi: Dataset nima?
+Javus: Dataset — model o'rganishi yoki tekshirilishi uchun tayyorlangan ma'lumotlar to'plami. Sifatli, xilma-xil va toza dataset yaxshi natija uchun muhim.
+
+Foydalanuvchi: Nega ko'p ma'lumot kerak?
+Javus: Ko'p va turli misollar modelga tilning ko'proq qoidalari, so'z birikmalari va mavzularini o'rganishga yordam beradi. Takroriy yoki xato matnlar esa sifatni pasaytirishi mumkin.
+
+Foydalanuvchi: Model qanday o'qitiladi?
+Javus: Trening vaqtida model keyingi tokenni bashorat qiladi. Bashorat va haqiqiy token orasidagi xato loss bilan o'lchanadi, so'ng parametrlar gradient descent orqali yangilanadi.
+
+Foydalanuvchi: Loss nima?
+Javus: Loss — model bashorati qanchalik xato ekanini o'lchaydigan qiymat. Odatda trening davomida uning pasayishi foydali, lekin validation natijasi ham tekshirilishi kerak.
+
+Foydalanuvchi: Validation nima uchun kerak?
+Javus: Validation modelni treningda ishlatilmagan matnda tekshiradi. Bu model faqat yodlab olganmi yoki yangi misollarda ham ishlay oladimi, shuni baholashga yordam beradi.
+
+Foydalanuvchi: Overfitting nima?
+Javus: Overfitting — model trening misollarini haddan tashqari yodlab, yangi ma'lumotlarda yomon ishlashi. Buni validation loss va alohida testlar orqali kuzatish mumkin.
+
+Foydalanuvchi: PyTorch nima?
+Javus: PyTorch — tensorlar, avtomatik gradient hisoblash va neyron tarmoqlarni qurish hamda o'qitish uchun ishlatiladigan Python kutubxonasi.
+
+Foydalanuvchi: Python nima?
+Javus: Python — o'qilishi oson sintaksisga ega dasturlash tili. U avtomatlashtirish, veb dasturlash, ma'lumot tahlili va mashina o'rganishida keng qo'llanadi.
+
+Foydalanuvchi: Algoritm nima?
+Javus: Algoritm — muammoni yechish uchun aniq tartibda bajariladigan qadamlar ketma-ketligi.
+
+Foydalanuvchi: Dasturlashni nimadan boshlash kerak?
+Javus: Avval o'zgaruvchilar, shartlar, takrorlash operatorlari va funksiyalarni o'rganing. Keyin kichik loyihalar yozib, xatolarni tahlil qiling.
+
+Foydalanuvchi: Xato chiqsa nima qilaman?
+Javus: Xato xabarini diqqat bilan o'qing, muammo qaysi qatorda ekanini toping va kodni kichik qismlarga ajratib tekshiring. Bir vaqtda bitta o'zgarish kiriting.
+
+Foydalanuvchi: Git nima?
+Javus: Git — koddagi o'zgarishlar tarixini saqlash va jamoa bilan ishlashga yordam beradigan versiya nazorati tizimi.
+
+Foydalanuvchi: GitHub nima?
+Javus: GitHub — Git repozitoriylarini internetda saqlash, kodni ko'rib chiqish, muammolarni kuzatish va avtomatik tekshiruvlarni bajarish platformasi.
+
+Foydalanuvchi: API nima?
+Javus: API — dasturlar bir-biri bilan ma'lumot almashishi uchun belgilangan interfeys va qoidalar to'plami.
+
+Foydalanuvchi: Server nima?
+Javus: Server — tarmoq orqali kelgan so'rovlarni qabul qilib, ularga javob beradigan dastur yoki kompyuter.
+
+Foydalanuvchi: Internet nima?
+Javus: Internet — dunyo bo'ylab ko'plab tarmoqlarni o'zaro bog'laydigan global tarmoq infratuzilmasi.
+
+Foydalanuvchi: Ma'lumotlar bazasi nima?
+Javus: Ma'lumotlar bazasi — tartiblangan ma'lumotlarni saqlash, qidirish va yangilash uchun mo'ljallangan tizim.
+
+Foydalanuvchi: Xavfsiz parol qanday bo'ladi?
+Javus: Kuchli parol uzun, taxmin qilish qiyin va boshqa saytlarda qayta ishlatilmaydigan bo'ladi. Uni hech kimga yubormang va imkon bo'lsa ikki bosqichli himoyani yoqing.
+
+Foydalanuvchi: API kalitini boshqalarga berish mumkinmi?
+Javus: Yo'q. API kaliti maxfiy ma'lumot. Uni ommaviy chat, kod yoki skrinshotga joylamang. Oshkor bo'lsa, darhol yangisiga almashtiring.
+
+Foydalanuvchi: O'zbek tili haqida ayt.
+Javus: O'zbek tili turkiy tillar oilasiga kiradi. U lotin va kirill yozuvlarida qo'llanadi. O'zbekcha matnda o', g', sh, ch kabi harf birikmalari va maxsus belgilar uchraydi.
+
+Foydalanuvchi: O'zbekcha apostrofni qanday yozaman?
+Javus: O'zbek lotin yozuvida o‘ va g‘ harflari uchun turli klaviaturalarda to'g'ri tipografik apostrof yoki oddiy apostrof ishlatilishi mumkin. Matn bo'ylab bir xil uslubni saqlash foydali.
+
+Foydalanuvchi: Kitob o'qishning foydasi nima?
+Javus: Kitob o'qish so'z boyligini oshiradi, diqqatni jamlashga va murakkab fikrlarni tushunishga yordam beradi. O'qiganingizdan qisqa xulosa yozish bilimni mustahkamlaydi.
+
+Foydalanuvchi: Vaqtni qanday rejalashtiraman?
+Javus: Katta vazifani kichik bosqichlarga ajrating. Eng muhim ishni avval bajaring, tanaffus belgilang va kun oxirida bajarilgan ishlarni tekshiring.
+
+Foydalanuvchi: Matematikada formulani qanday o'rganaman?
+Javus: Formulaning ma'nosini tushuning, undagi harflar nimani anglatishini yozing va bir nechta misolda qo'llang. Faqat yodlash bilan cheklanib qolmang.
+
+Foydalanuvchi: Uchburchak yuzasi qanday topiladi?
+Javus: Uchburchak yuzasi asos va balandlik ko'paytmasining yarmiga teng. Formula: S = a × h / 2.
+
+Foydalanuvchi: To'g'ri to'rtburchak perimetri nima?
+Javus: Perimetr barcha tomonlar yig'indisidir. Uzunligi a va eni b bo'lsa, P = 2 × (a + b).
+
+Foydalanuvchi: Foiz nima?
+Javus: Foiz — yuzdan bir ulush. Masalan, 25 foiz 100 dan 25 qism degani va 0,25 ga teng.
+
+Foydalanuvchi: Suv nima uchun kerak?
+Javus: Suv tirik organizmlar hayoti uchun zarur. U tana haroratini boshqarish, moddalarni tashish va ko'plab biologik jarayonlarda qatnashadi.
+
+Foydalanuvchi: Quyosh nima?
+Javus: Quyosh — Yerga eng yaqin yulduz. Uning yorug'ligi va issiqligi Yerda hayot mavjud bo'lishi uchun muhim.
+
+Foydalanuvchi: Yer nima?
+Javus: Yer — Quyosh tizimidagi uchinchi sayyora. Uning yuzasida suyuq suv va hayot mavjud.
+
+Foydalanuvchi: Oy nima sababdan yorqin ko'rinadi?
+Javus: Oy o'zidan ko'p yorug'lik chiqarmaydi. Biz ko'radigan yorug'lik asosan Quyosh nurlarining Oy yuzasidan qaytishidir.
+
+Foydalanuvchi: Elektr toki nima?
+Javus: Elektr toki — elektr zaryadlarining tartibli harakati. Elektr bilan ishlaganda xavfsizlik qoidalariga rioya qilish kerak.
+
+Foydalanuvchi: Kompyuter qanday ishlaydi?
+Javus: Kompyuter dastur ko'rsatmalarini protsessor yordamida bajaradi. Xotira ma'lumotlarni vaqtincha yoki doimiy saqlaydi, qurilmalar esa kirish va chiqishni ta'minlaydi.
+
+Foydalanuvchi: RAM nima?
+Javus: RAM — kompyuter ishlayotgan paytda dasturlar va ma'lumotlarni vaqtincha saqlaydigan tezkor xotira. Qurilma o'chirilganda undagi ma'lumotlar saqlanmaydi.
+
+Foydalanuvchi: SSD va HDD farqi nima?
+Javus: SSD ma'lumotni flesh xotirada saqlaydi va odatda tezroq ishlaydi. HDD esa magnit diskdan foydalanadi va ko'pincha arzonroq katta hajm taklif qiladi.
+
+Foydalanuvchi: Telefon qizib ketsa nima qilaman?
+Javus: Og'ir ilovalarni yoping, telefonni quyoshdan uzoq tuting va sovishini kuting. Juda qizigan qurilmani zaryadlashni davom ettirmang.
+
+Foydalanuvchi: Zaxira nusxa nima?
+Javus: Zaxira nusxa — muhim fayllarning alohida joyda saqlangan qo'shimcha nusxasi. Qurilma buzilsa yoki fayl o'chib ketsa, ularni tiklashga yordam beradi.
+
+Foydalanuvchi: O'rganishda xato qilish yomonmi?
+Javus: Yo'q. Xato o'rganish jarayonining tabiiy qismi. Muhimi, xatoni tushunish, sababini topish va keyingi safar to'g'ri yo'lni sinash.
+
+Foydalanuvchi: Yaxshi savol qanday beriladi?
+Javus: Savolni aniq yozing, kerakli kontekstni qo'shing va qanday natija kutayotganingizni ayting. Bu aniqroq javob olishga yordam beradi.
+
+Foydalanuvchi: Javobing noto'g'ri bo'lsa-chi?
+Javus: Javobimni tekshirib ko'ring. Men kichik tajriba modeliman va xato qilishim mumkin. Muhim ma'lumotni ishonchli manbadan tasdiqlash kerak.
+
+Foydalanuvchi: Sen hamma narsani bilasanmi?
+Javus: Yo'q. Men faqat trening ma'lumotlarimdan o'rgangan naqshlar asosida matn yarataman. Bilmagan narsamni ishonch bilan aytmasligim kerak.
+
+Foydalanuvchi: Javus nomi nimani anglatadi?
+Javus: Javus — ushbu mustaqil sun'iy intellekt loyihasining nomi. Loyiha maqsadi o'z model arxitekturasi va o'z ma'lumotlar to'plami bilan tajriba qilishdir.
+
+Foydalanuvchi: Javus hozir multimodalmi?
+Javus: Yo'q. Hozirgi Javus Small tajribasi faqat matn bilan ishlaydigan model. Rasm va audio imkoniyatlari keyingi alohida bosqichlarda ishlab chiqilishi mumkin.
+
+Foydalanuvchi: Javus qachon kuchli bo'ladi?
+Javus: Buni aniq sana bilan aytib bo'lmaydi. Katta va sifatli dataset, ko'proq hisoblash resurslari, takroriy trening va mustaqil testlar kerak bo'ladi.
+
+Foydalanuvchi: Rahmat!
+Javus: Marhamat! Yana savolingiz bo'lsa, bemalol yozing.
+
+Foydalanuvchi: Xayr.
+Javus: Xayr! Kuningiz yaxshi o'tsin.

@@ -93,6 +93,7 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     max_new_tokens: int = Field(default=80, ge=1, le=128)
     temperature: float = Field(default=0.8, gt=0.05, le=2.0)
+    top_k: int = Field(default=40, ge=1, le=256)
 
 
 class ChatResponse(BaseModel):
@@ -122,10 +123,11 @@ def chat(request: ChatRequest):
             status_code=503,
             detail="Model yuklanmagan. Server loglari va checkpoint sozlamalarini tekshiring.",
         )
-    prompt_tokens = TOKENIZER.encode(request.message)
+    # Match the prompt format used by the supervised conversation corpus.
+    formatted_prompt = f"Foydalanuvchi: {request.message.strip()}\nJavus:"
+    prompt_tokens = TOKENIZER.encode(formatted_prompt)
     if not prompt_tokens:
         raise HTTPException(status_code=400, detail="Xabar bo'sh.")
-    # Keep the prompt within the model's context window.
     context = prompt_tokens[-MODEL.config.block_size:]
     tokens = torch.tensor([context], dtype=torch.long, device=DEVICE)
     with torch.inference_mode():
@@ -133,6 +135,7 @@ def chat(request: ChatRequest):
             tokens,
             max_new_tokens=request.max_new_tokens,
             temperature=request.temperature,
+            top_k=request.top_k,
         )
     new_tokens = generated[0, len(context):].tolist()
     reply = TOKENIZER.decode(new_tokens).strip()
