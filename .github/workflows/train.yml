@@ -48,6 +48,7 @@ jobs:
         env:
           TRAIN_STEPS: ${{ inputs.steps }}
         run: |
+          set -o pipefail
           echo "Training steps: ${TRAIN_STEPS}"
           python -m javus.train --steps "${TRAIN_STEPS}" --batch-size 8 2>&1 | tee training.log
 
