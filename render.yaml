@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: javus-alpha-api
+    runtime: python
+    plan: starter
+    region: frankfurt
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn javus.api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: JAVUS_TORCH_THREADS
+        value: "2"
+      - key: JAVUS_CHECKPOINT_URL
+        sync: false
+      - key: JAVUS_API_KEY
+        generateValue: true
