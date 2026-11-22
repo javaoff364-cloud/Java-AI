@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from .config import JavusConfig
 from .model import JavusLanguageModel
+from .bpe_tokenizer import ByteBPETokenizer
 from .tokenizer import ByteTokenizer, CharTokenizer
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,7 +21,7 @@ DEFAULT_CHECKPOINT = ROOT / "checkpoints" / "javus-alpha.pt"
 MODEL: Optional[JavusLanguageModel] = None
 TOKENIZER = ByteTokenizer()
 DEVICE = torch.device("cpu")
-MODEL_NAME = "Javus Alpha"
+MODEL_NAME = "Javus Alpha 2"
 
 
 def checkpoint_path() -> Path:
@@ -57,13 +58,15 @@ def load_model() -> None:
     if not isinstance(payload, dict) or "config" not in payload or "model" not in payload:
         raise RuntimeError("Checkpoint formati Javus Alpha uchun mos emas.")
     config = JavusConfig(**payload["config"])
-    if "tokenizer" in payload:
-        TOKENIZER = CharTokenizer.from_state(payload["tokenizer"])
-        if TOKENIZER.vocab_size != config.vocab_size:
-            raise RuntimeError("Checkpoint tokenizer hajmi model config bilan mos emas.")
+    state = payload.get("tokenizer")
+    if isinstance(state, dict) and state.get("type") == "byte_bpe":
+        TOKENIZER = ByteBPETokenizer.from_state(state)
+    elif state is not None:
+        TOKENIZER = CharTokenizer.from_state(state)
     else:
-        # Backward compatibility for the currently deployed byte-token model.
         TOKENIZER = ByteTokenizer()
+    if TOKENIZER.vocab_size != config.vocab_size:
+        raise RuntimeError("Checkpoint tokenizer hajmi model config bilan mos emas.")
     model = JavusLanguageModel(config).to(DEVICE)
     model.load_state_dict(payload["model"], strict=True)
     model.eval()
@@ -127,7 +130,7 @@ def health():
         "model": MODEL_NAME,
         "loaded": MODEL is not None,
         "device": str(DEVICE),
-        "tokenizer": "unicode-character" if isinstance(TOKENIZER, CharTokenizer) else "utf8-byte-legacy",
+        "tokenizer": "byte-bpe" if isinstance(TOKENIZER, ByteBPETokenizer) else ("unicode-character" if isinstance(TOKENIZER, CharTokenizer) else "utf8-byte-legacy"),
     }
 
 
