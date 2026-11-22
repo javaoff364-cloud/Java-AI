@@ -103,22 +103,21 @@ def main():
             tokenizer = CharTokenizer.from_text(text)
         else:
             tokenizer = CharTokenizer.from_state(checkpoint["tokenizer"])
-        known_chars = set(tokenizer.itos)
-        missing_chars = sorted(set(text) - known_chars) if checkpoint is not None else []
-        if missing_chars:
-            # A larger vocabulary changes embedding dimensions. Preserve the old
-            # checkpoint for recovery, then start with a matching multilingual vocab.
+        expected_tokenizer = CharTokenizer.from_text(text)
+        vocabulary_changed = checkpoint is not None and set(tokenizer.itos) != set(expected_tokenizer.itos)
+        if vocabulary_changed:
+            # A changed corpus vocabulary changes embedding dimensions and language scope.
+            # Preserve the previous model, then start with a matching English-focused model.
             CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
             if not PREVIOUS_CHECKPOINT.exists():
                 shutil.copy2(source_checkpoint, PREVIOUS_CHECKPOINT)
             print(
-                "Dataset contains new Unicode characters; the old embedding vocabulary "
-                "cannot be resumed safely. Preserved the old checkpoint and starting a "
-                "fresh multilingual model.",
+                "Dataset vocabulary changed; preserved the previous checkpoint and "
+                "starting a fresh model with the current corpus vocabulary.",
                 flush=True,
             )
             checkpoint = None
-            tokenizer = CharTokenizer.from_text(text)
+            tokenizer = expected_tokenizer
         elif checkpoint is not None:
             if checkpoint.get("corpus_sha256") not in (None, corpus_sha256):
                 print("Dataset text changed; tokenizer remains compatible, resuming weights.", flush=True)
