@@ -1,0 +1,7 @@
+Assalomu alaykum. Bu Javus AI loyihasining dastlabki tajriba matnidir.
+Javus AI o'z neyron tarmog'ini noldan yaratish va o'qitish uchun ishlab chiqilmoqda.
+Sun'iy intellekt ma'lumotlardan naqshlarni o'rganadigan matematik modellardan foydalanadi.
+Transformer arxitekturasi attention mexanizmi orqali ketma-ketlikdagi tokenlar orasidagi bog'lanishlarni o'rganadi.
+O'zbek tili boy va mazmunli til. Javus o'zbekcha matnlarni qayta ishlashni o'rganishi kerak.
+Mashina o'rganish tajriba, sifatli ma'lumotlar va puxta baholashni talab qiladi.
+Bu kichik dataset faqat dastur ishlashini tekshirish uchun mo'ljallangan. U kuchli suhbat modeli yaratish uchun yetarli emas.
