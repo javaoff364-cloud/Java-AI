@@ -7,7 +7,7 @@
 - Python 3.10+ and PyTorch
 - Decoder-only Transformer with causal self-attention
 - Unicode character tokenizer with a checkpointed vocabulary
-- Multilingual starter corpus: English, Uzbek (Latin and Cyrillic), Russian, Turkish, Arabic, Chinese, and Japanese
+- English-only starter corpus for the current training stage
 - AdamW, cross-entropy, gradient clipping, validation monitoring, and adaptive learning rate
 - Resumable checkpoints, JSONL metrics, pytest, and GitHub Actions
 
@@ -37,7 +37,7 @@ pip install -r requirements.txt
 
 ## Dataset and language support
 
-`data/train.txt` contains manually authored starter examples in English, Uzbek Latin/Cyrillic, Russian, Turkish, Arabic, Chinese, and Japanese. The corpus is UTF-8 and includes non-Latin scripts and emoji.
+`data/train.txt` currently contains English-only, manually authored conversation examples. The tokenizer remains Unicode-capable, but the training corpus is intentionally English-only for this stage.
 
 The tokenizer maps Unicode code points to IDs and stores its exact vocabulary in each checkpoint. It can round-trip characters present in its vocabulary. A character absent from the vocabulary maps to `<unk>`; add new scripts/symbols to the corpus and retrain with a compatible vocabulary before expecting the model to generate them.
 
@@ -82,7 +82,7 @@ Files created locally:
 - `checkpoints/javus-alpha-metrics.jsonl` — per-run metrics;
 - `checkpoints/javus-alpha-pre-multilingual.pt` — preserved previous checkpoint if a new vocabulary is required.
 
-When a new dataset contains characters missing from an older checkpoint vocabulary, the trainer preserves the old checkpoint and starts a compatible Unicode model. This avoids corrupting embedding dimensions or silently training new characters as unknown tokens.
+When the dataset vocabulary changes, the trainer preserves the previous checkpoint and starts a new model with a matching vocabulary. This prevents old multilingual weights and incompatible token IDs from contaminating the English-only training run.
 
 ## Training behavior
 
@@ -102,7 +102,7 @@ GitHub-hosted runners are temporary and have execution limits. For long-term tra
 ## Generate text
 
 ```bash
-python -m javus.generate --prompt "Assalomu alaykum" --max-new-tokens 40
+python -m javus.generate --prompt "Hello, how are you?" --max-new-tokens 40
 ```
 
 ## HTTP API
@@ -126,11 +126,11 @@ Set `JAVUS_API_KEY` to protect `POST /chat`. Never commit API keys or private ch
 
 - [x] Python Transformer prototype
 - [x] Unicode character tokenizer
-- [x] Multilingual starter corpus
+- [x] English-only starter corpus
 - [x] Checkpoint and resume support
 - [x] Bounded GitHub Actions training
 - [x] Core and dataset tests
-- [ ] Larger balanced and licensed multilingual corpus
+- [ ] Larger, reviewed, and licensed English corpus
 - [ ] Separate evaluation benchmark
 - [ ] Improve tokenizer and model architecture
 - [ ] Vision and audio research modules
