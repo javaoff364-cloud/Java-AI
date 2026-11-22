@@ -54,20 +54,37 @@ class AdaptiveLearningRate:
 @__import__("torch").no_grad()
 def evaluate(model, train_data, val_data, block_size, batch_size=8, batches=10, device="cpu"):
     import torch
+    import torch.nn.functional as F
 
     model.eval()
     result = {}
-    for name, source in (("train", train_data), ("validation", val_data)):
+    if len(train_data) > block_size + 1:
         losses = []
-        if len(source) <= block_size + 1:
-            result[name] = None
-            continue
         for _ in range(batches):
-            starts = torch.randint(0, len(source) - block_size - 1, (batch_size,))
-            x = torch.stack([source[i:i + block_size] for i in starts]).to(device)
-            y = torch.stack([source[i + 1:i + block_size + 1] for i in starts]).to(device)
+            starts = torch.randint(0, len(train_data) - block_size - 1, (batch_size,))
+            x = torch.stack([train_data[i:i + block_size] for i in starts]).to(device)
+            y = torch.stack([train_data[i + 1:i + block_size + 1] for i in starts]).to(device)
             _, loss = model(x, y)
             losses.append(float(loss.item()))
-        result[name] = sum(losses) / len(losses)
+        result["train"] = sum(losses) / len(losses)
+    else:
+        result["train"] = None
+
+    # Validation target tokens use preceding training text as context. This
+    # keeps the model's block_size unchanged even when the validation split
+    # is shorter than one full training window.
+    if len(val_data) > 0 and len(train_data) >= block_size:
+        combined = torch.cat((train_data, val_data))
+        split_index = len(train_data)
+        x = torch.stack([
+            combined[index - block_size:index]
+            for index in range(split_index, len(combined))
+        ]).to(device)
+        targets = val_data.to(device)
+        logits, _ = model(x)
+        result["validation"] = float(F.cross_entropy(logits[:, -1, :], targets).item())
+    else:
+        result["validation"] = None
+
     model.train()
     return result
