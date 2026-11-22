@@ -109,7 +109,7 @@ class ChatResponse(BaseModel):
 
 def clean_reply(reply: str) -> str:
     """Stop when the model begins generating the next training conversation."""
-    for marker in ("\nFoydalanuvchi:", "\n\nFoydalanuvchi:", "\nUser:", "\n\nUser:", "\nПользователь:", "\n\nПользователь:", "\nKullanıcı:", "\n\nKullanıcı:", "\nالمستخدم:", "\n\nالمستخدم:", "\n用户:", "\n\n用户:", "\nユーザー:", "\n\nユーザー:"):
+    for marker in ("\nUser:", "\n\nUser:"):
         if marker in reply:
             reply = reply.split(marker, 1)[0]
     return reply.strip()
@@ -138,7 +138,7 @@ def chat(request: ChatRequest):
             status_code=503,
             detail="Model yuklanmagan. Server loglari va checkpoint sozlamalarini tekshiring.",
         )
-    formatted_prompt = f"Foydalanuvchi: {request.message.strip()}\nJavus:"
+    formatted_prompt = f"User: {request.message.strip()}\nJavus:"
     prompt_tokens = TOKENIZER.encode(formatted_prompt)
     if not prompt_tokens:
         raise HTTPException(status_code=400, detail="Xabar bo'sh.")
