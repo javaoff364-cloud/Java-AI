@@ -41,7 +41,7 @@ pip install -r requirements.txt
 
 ## Dataset
 
-`data/train.txt` currently contains English-only, manually authored conversation examples. Each conversation is separated by a blank line:
+`data/train.txt` is intended to contain 1,000 English conversation examples (the existing authored seed plus filtered Dolly 15k examples). Run `python scripts/import_dolly.py` to rebuild it reproducibly; the GitHub Actions **Import Dolly training data** workflow can run this on the dataset branch. The importer filters empty, duplicate, overly long, non-English, and URL-containing examples. Dolly is licensed CC BY-SA 3.0, so retain attribution and license details. Source: https://huggingface.co/datasets/databricks/databricks-dolly-15k. Each conversation is separated by a blank line:
 
 ```text
 User: Why is the sky blue?
