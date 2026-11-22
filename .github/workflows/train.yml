@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   train:
-    name: Test and continuously train Javus Small
+    name: Test and continuously train Javus Alpha
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
@@ -35,7 +35,9 @@ jobs:
       - name: Restore previous training checkpoint
         uses: actions/cache/restore@v4
         with:
-          path: checkpoints/javus-small.pt
+          path: |
+            checkpoints/javus-alpha.pt
+            checkpoints/javus-small.pt
           key: javus-checkpoint-${{ github.run_id }}
           restore-keys: |
             javus-checkpoint-
@@ -50,25 +52,28 @@ jobs:
           python -m javus.train --steps 100 --batch-size 8 --forever 2>&1 | tee -a training.log
 
       - name: Save checkpoint for the next run
-        if: always() && hashFiles('checkpoints/javus-small.pt') != ''
+        if: always() && hashFiles('checkpoints/javus-alpha.pt') != ''
         uses: actions/cache/save@v4
         with:
-          path: checkpoints/javus-small.pt
+          path: checkpoints/javus-alpha.pt
           key: javus-checkpoint-${{ github.run_id }}
 
       - name: Verify latest checkpoint
         if: always()
         run: |
-          test -s checkpoints/javus-small.pt
-          ls -lh checkpoints/javus-small.pt
+          test -s checkpoints/javus-alpha.pt
+          ls -lh checkpoints/javus-alpha.pt
+          ls -lh checkpoints/javus-alpha-best.pt || true
 
       - name: Upload latest model checkpoint and log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: javus-small-continuous-checkpoint
+          name: javus-alpha-smart-checkpoint
           path: |
-            checkpoints/javus-small.pt
+            checkpoints/javus-alpha.pt
+            checkpoints/javus-alpha-best.pt
+            checkpoints/javus-alpha-metrics.jsonl
             training.log
           if-no-files-found: error
           retention-days: 14
