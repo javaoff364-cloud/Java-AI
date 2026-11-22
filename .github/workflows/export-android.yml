@@ -1,0 +1,58 @@
+name: Export Javus Alpha for Android (NumPy)
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "GitHub Actions run ID containing the .pt checkpoint"
+        required: true
+        default: "45030753250"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download source checkpoint artifact
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+          pattern: "*checkpoint*"
+          path: incoming
+          merge-multiple: true
+
+      - name: Locate checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          PT_FILE="$(find incoming -type f -name '*.pt' -print -quit)"
+          if [ -z "$PT_FILE" ]; then
+            echo "No .pt checkpoint found in source run artifact."
+            find incoming -maxdepth 4 -type f -print || true
+            exit 1
+          fi
+          mkdir -p checkpoints
+          cp "$PT_FILE" checkpoints/source.pt
+          echo "Using $PT_FILE"
+
+      - name: Install exporter dependencies
+        run: python -m pip install --upgrade pip numpy torch
+
+      - name: Export checkpoint to NumPy
+        run: |
+          python -m javus.export_numpy checkpoints/source.pt --output checkpoints/javus-alpha.npz
+          ls -lh checkpoints/javus-alpha.npz
+
+      - name: Upload Android-ready model
+        uses: actions/upload-artifact@v4
+        with:
+          name: javus-alpha-numpy-android
+          path: checkpoints/javus-alpha.npz
+          if-no-files-found: error
+          retention-days: 30
