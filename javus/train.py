@@ -104,7 +104,7 @@ def main():
         else:
             tokenizer = CharTokenizer.from_state(checkpoint["tokenizer"])
         known_chars = set(tokenizer.itos)
-        missing_chars = sorted(set(text) - known_chars) if checkpoint is not None else [] 
+        missing_chars = sorted(set(text) - known_chars) if checkpoint is not None else []
         if missing_chars:
             # A larger vocabulary changes embedding dimensions. Preserve the old
             # checkpoint for recovery, then start with a matching multilingual vocab.
@@ -119,7 +119,7 @@ def main():
             )
             checkpoint = None
             tokenizer = CharTokenizer.from_text(text)
-        else:
+        elif checkpoint is not None:
             if checkpoint.get("corpus_sha256") not in (None, corpus_sha256):
                 print("Dataset text changed; tokenizer remains compatible, resuming weights.", flush=True)
             print(f"{MODEL_NAME}: resuming from step {checkpoint.get('step', 0)}.", flush=True)
