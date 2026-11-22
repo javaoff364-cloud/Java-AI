@@ -61,10 +61,10 @@ python -m pytest -q
 Run one bounded session (100 optimizer steps by default):
 
 ```bash
-python -m javus.train --steps 100 --batch-size 8
+python -m javus.train --steps 500 --batch-size 8
 ```
 
-The first Alpha 2 run detects the older tokenizer checkpoint, preserves it as `checkpoints/javus-alpha-pre-alpha2.pt`, and initializes a new byte-BPE model. Later runs resume only when the saved tokenizer vocabulary matches the current corpus.
+The first Alpha 2 run detects an older tokenizer checkpoint, preserves it, and initializes a byte-BPE model. A checkpoint is resumed only when both the corpus SHA-256 and BPE vocabulary match exactly; changed training data starts a fresh run while archiving the previous checkpoint. Train/validation splitting shuffles complete conversation records with a fixed seed, preventing source-order bias and keeping each answer paired with its prompt.
 
 To intentionally start the Alpha 2 model from scratch:
 
@@ -112,7 +112,7 @@ Set `JAVUS_API_KEY` to protect `POST /chat`. Never commit API keys or private ch
 
 ## GitHub Actions
 
-The training workflow runs a finite number of steps (100 by default; manual choices include 250, 500, or 1000), saves a checkpoint, and uploads artifacts for 30 days. It is scheduled every six hours. A separate CI workflow runs tests on pushes and pull requests.
+The training workflow is manual-only and bounded (500 optimizer steps by default; choose 100, 250, 500, or 1000). It runs tests first, saves a resumable checkpoint, and uploads checkpoints, metrics, and logs as artifacts for 30 days. It does not start recurring training automatically. A separate CI workflow runs tests on pushes and pull requests.
 
 ## Roadmap
 
