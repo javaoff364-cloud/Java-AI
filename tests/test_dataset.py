@@ -4,19 +4,44 @@ import pytest
 
 from javus.bpe_tokenizer import ByteBPETokenizer
 from javus.train import split_corpus
+from scripts.import_dolly import clean_pair, unique_records
 
 
-def test_training_corpus_is_english_only():
+def test_training_corpus_is_valid_utf8_and_has_complete_records():
     corpus_path = Path(__file__).resolve().parents[1] / "data" / "train.txt"
     corpus = corpus_path.read_text(encoding="utf-8")
-    records = [part.strip() for part in corpus.split("\n\n") if part.strip() and not part.lstrip().startswith("#")]
+    records = [
+        part.strip()
+        for part in corpus.split("\n\n")
+        if part.strip() and not part.lstrip().startswith("#")
+    ]
     assert len(records) == 1000
-    assert all(record.startswith("User:") for record in records)
-    assert all("Javus:" in record for record in records)
-    assert all(all(ord(char) < 128 for char in record) for record in records)
+    assert all(record.startswith("User: ") for record in records)
+    assert all("\nJavus: " in record for record in records)
     assert "What is artificial intelligence?" in corpus
     assert "How should an AI assistant handle uncertainty?" in corpus
-    assert "�" not in corpus
+    assert "\ufffd" not in corpus
+
+
+def test_byte_bpe_round_trips_uzbek_unicode():
+    text = "User: O'zbekiston haqida gapirib ber.\nJavus: O‘zbekiston Markaziy Osiyoda joylashgan."
+    tokenizer = ByteBPETokenizer.from_text(text, num_merges=16)
+    assert tokenizer.decode(tokenizer.encode(text)) == text
+
+
+def test_huggingface_rows_are_cleaned_and_deduplicated():
+    rows = [
+        {"inputs": "  Salom,   Javus! ", "targets": " Assalomu alaykum! "},
+        {"inputs": "salom, javus!", "targets": "Takroriy savol."},
+        {"inputs": "Open https://example.com", "targets": "Link bor."},
+        {"inputs": "English question?", "targets": "A useful answer."},
+    ]
+    records = unique_records(rows, limit=10)
+    assert records == [
+        "User: Salom, Javus!\nJavus: Assalomu alaykum!",
+        "User: English question?\nJavus: A useful answer.",
+    ]
+    assert clean_pair("", "answer") is None
 
 
 def test_split_is_reproducible_and_keeps_conversations_whole():
