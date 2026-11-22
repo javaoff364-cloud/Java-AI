@@ -3,7 +3,7 @@ import torch
 
 from javus.config import JavusConfig
 from javus.model import JavusLanguageModel
-from javus.tokenizer import ByteTokenizer
+from javus.tokenizer import ByteTokenizer, CharTokenizer
 
 
 def tiny_config():
@@ -15,6 +15,28 @@ def test_byte_tokenizer_round_trip_uzbek():
     text = "Assalomu alaykum! O‘zbekiston — go‘zal."
     assert tokenizer.decode(tokenizer.encode(text)) == text
     assert max(tokenizer.encode(text)) < tokenizer.vocab_size
+
+
+def test_unicode_tokenizer_round_trip_uzbek():
+    text = "Assalomu alaykum! O‘zbekiston — o‘, g‘, sh, ch, G‘."
+    tokenizer = CharTokenizer.from_text(text)
+    assert tokenizer.decode(tokenizer.encode(text)) == text
+    assert max(tokenizer.encode(text)) < tokenizer.vocab_size
+
+
+def test_unicode_tokenizer_state_is_stable():
+    text = "Salom, Javus! O‘zbek tili."
+    first = CharTokenizer.from_text(text)
+    restored = CharTokenizer.from_state(first.to_dict())
+    assert restored.encode(text) == first.encode(text)
+    assert restored.decode(first.encode(text)) == text
+
+
+def test_unicode_tokenizer_handles_unseen_characters():
+    tokenizer = CharTokenizer.from_text("Javus AI")
+    encoded = tokenizer.encode("Javus 🙂")
+    assert 0 in encoded
+    assert tokenizer.decode(encoded) == "Javus "
 
 
 def test_config_rejects_incompatible_attention_heads():
