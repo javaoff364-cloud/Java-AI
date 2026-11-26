@@ -1,9 +1,10 @@
-name: Python CI
+name: Javus Python CI
 
 on:
   push:
-    branches: ["main", "javus-alpha-2-foundation"]
+    branches: ["main", "javus/**"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
