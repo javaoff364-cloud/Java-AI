@@ -88,9 +88,15 @@ class JavusLanguageModel(nn.Module):
                 nn.init.zeros_(module.bias)
 
     def forward(self, tokens: torch.Tensor, targets: torch.Tensor | None = None):
+        if tokens.ndim != 2:
+            raise ValueError("tokens [batch, sequence] shaklida bo'lishi kerak")
         batch, seq_len = tokens.shape
+        if seq_len < 1:
+            raise ValueError("Kirish ketma-ketligi bo'sh bo'lmasligi kerak")
         if seq_len > self.config.block_size:
             raise ValueError("Kirish ketma-ketligi block_size dan uzun")
+        if targets is not None and targets.shape != tokens.shape:
+            raise ValueError("targets shakli tokens bilan bir xil bo'lishi kerak")
         positions = torch.arange(seq_len, device=tokens.device)
         x = self.drop(self.token_embedding(tokens) + self.position_embedding(positions))
         x = self.final_norm(self.blocks(x))
@@ -107,8 +113,14 @@ class JavusLanguageModel(nn.Module):
         top_k: int | None = 40,
     ):
         """Generate tokens with temperature and optional top-k sampling."""
-        if temperature <= 0:
-            raise ValueError("temperature musbat bo'lishi kerak")
+        import math
+
+        if tokens.ndim != 2 or tokens.shape[1] < 1:
+            raise ValueError("tokens bo'sh bo'lmagan [batch, sequence] tensor bo'lishi kerak")
+        if max_new_tokens < 0:
+            raise ValueError("max_new_tokens manfiy bo'lmasligi kerak")
+        if not math.isfinite(temperature) or temperature <= 0:
+            raise ValueError("temperature chekli va musbat bo'lishi kerak")
         if top_k is not None and top_k < 1:
             raise ValueError("top_k kamida 1 bo'lishi kerak")
 

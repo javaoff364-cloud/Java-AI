@@ -1,6 +1,6 @@
 # Javus AI
 
-**Javus AI** is an independent Python/PyTorch neural-network research project. **Javus Alpha 2** is a from-scratch, decoder-only Transformer experiment intended to grow into a bilingual Uzbek + English conversational assistant. It does not load pretrained model weights or call an external LLM.
+**Javus AI** is an independent Python/PyTorch neural-network research project. **Javus Alpha 2** is a text-only, from-scratch decoder-only Transformer experiment for a bilingual Uzbek + English assistant. Image and audio inputs are intentionally out of scope for this phase. It does not load pretrained model weights or call an external LLM.
 
 ## Alpha 2 foundation
 
@@ -11,33 +11,26 @@
 - UTF-8 byte fallback, including Uzbek apostrophes and other Unicode characters
 - English + Uzbek instruction data from Hugging Face Aya Collection
 - AdamW, cross-entropy, gradient clipping, validation monitoring, adaptive learning rate
-- Resumable checkpoints, JSONL metrics, pytest, and bounded GitHub Actions training
+- Resumable checkpoints, JSONL metrics, pytest, and manually triggered, strictly bounded GitHub Actions training
+
+The default BPE setup uses a 256-byte base vocabulary plus up to 128 learned merges (384 tokens). The default Small Transformer uses 128 hidden dimensions, 4 attention heads, 4 layers, and a 128-token context window. Its parameter count is under one million (the exact count depends on the tokenizer vocabulary). This is a compact research baseline, not a production-scale assistant.
 
 **Important:** the current 1,000-example corpus is only a pipeline smoke-test dataset, not enough to create a capable assistant. A useful model needs much larger, carefully reviewed, diverse data and held-out evaluation. A low training loss alone does not prove answer quality.
 
-## Install in Termux
+## GitHub-first development
 
-A Linux environment through Ubuntu proot is recommended for PyTorch compatibility:
+GitHub is the primary development and training environment for this phase. Changes are made on feature branches and merged through pull requests after CI checks. Training and dataset import workflows are started manually from the Actions tab; pushes and pull requests run tests only.
 
-```bash
-pkg update && pkg upgrade -y
-pkg install -y git proot-distro
-proot-distro install ubuntu
-proot-distro login ubuntu
-```
-
-Inside Ubuntu:
+To work locally when needed, clone the repository and install the project:
 
 ```bash
-apt update
-apt install -y python3 python3-venv python3-pip git
 git clone https://github.com/javaoff364-cloud/Java-AI.git
 cd Java-AI
-python3 -m venv .venv
-source .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -e ".[data,test]"
+python -m pip install -e ".[data,test]"
 ```
+
+For Termux, use a supported Linux environment (such as Ubuntu in proot) if native PyTorch installation is unavailable.
 
 ## Hugging Face dataset
 
@@ -89,7 +82,7 @@ To intentionally start the Alpha 2 model from scratch:
 python -m javus.train --steps 100 --batch-size 8 --fresh
 ```
 
-Training is bounded by default. The optional `--forever` flag is for deliberate local experiments only; it must not be used in GitHub Actions.
+Every training invocation is bounded: `--steps` sets the maximum optimizer steps for that run, and the CLI does not provide an unbounded/forever mode. GitHub Actions training is manual-only and has a job timeout. A later run can resume from the saved checkpoint.
 
 ## Checkpoints and metrics
 

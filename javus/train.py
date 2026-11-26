@@ -92,8 +92,6 @@ def main():
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--bpe-merges", type=int, default=128)
-    parser.add_argument("--forever", action="store_true",
-                        help="Explicitly continue batches until manually stopped")
     parser.add_argument("--fresh", action="store_true",
                         help="Ignore existing checkpoints and create a new tokenizer/model")
     args = parser.parse_args()
@@ -173,8 +171,7 @@ def main():
     controller = AdaptiveLearningRate(optimizer, smart_state)
     batch_number = 0
     try:
-        while True:
-            batch_number += 1
+        for batch_number in range(1, 2):
             losses = []
             model.train()
             for _ in range(args.steps):
@@ -221,8 +218,6 @@ def main():
                 f"LR {optimizer.param_groups[0]['lr']:.6g}",
                 flush=True,
             )
-            if not args.forever:
-                break
     except KeyboardInterrupt:
         print("Stop requested. Saving the latest safe checkpoint...", flush=True)
         save_checkpoint(model, optimizer, config, tokenizer, global_step,
